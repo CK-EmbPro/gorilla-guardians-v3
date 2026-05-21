@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { useGetCart, useCreateOrder, useClearCart, getGetCartQueryKey } from "@workspace/api-client-react";
+import { useGetCart, useCreateOrder, useClearCart, getGetCartQueryKey, OrderInputShippingType } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -22,8 +22,7 @@ const PAYMENT_METHODS = [
 ];
 
 const SHIPPING_TYPES = [
-  { id: "standard", label: "Standard Shipping (7–14 days)", price: 25 },
-  { id: "express", label: "Express Shipping (3–5 days)", price: 65 },
+  { id: "global", label: "International Shipping (7–14 days)", price: 25 },
   { id: "pickup", label: "Village Pickup (Free)", price: 0 },
 ];
 
@@ -37,7 +36,7 @@ export default function CheckoutPage() {
 
   const [step, setStep] = useState<"shipping" | "payment" | "confirmation">("shipping");
   const [paymentMethod, setPaymentMethod] = useState("card");
-  const [shippingType, setShippingType] = useState("standard");
+  const [shippingType, setShippingType] = useState<OrderInputShippingType>("global");
   const [form, setForm] = useState({
     name: "", email: "", phone: "", address: "", city: "", country: "", postalCode: "",
   });
@@ -170,9 +169,9 @@ export default function CheckoutPage() {
                 <Card>
                   <CardHeader><CardTitle className="flex items-center gap-2"><Truck className="w-5 h-5 text-primary" /> Shipping Method</CardTitle></CardHeader>
                   <CardContent>
-                    <RadioGroup value={shippingType} onValueChange={setShippingType} className="space-y-3">
+                    <RadioGroup value={shippingType} onValueChange={(v) => setShippingType(v as OrderInputShippingType)} className="space-y-3">
                       {SHIPPING_TYPES.map(s => (
-                        <div key={s.id} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${shippingType === s.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`} onClick={() => setShippingType(s.id)} data-testid={`option-shipping-${s.id}`}>
+                        <div key={s.id} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${shippingType === s.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`} onClick={() => setShippingType(s.id as OrderInputShippingType)} data-testid={`option-shipping-${s.id}`}>
                           <RadioGroupItem value={s.id} id={s.id} />
                           <Label htmlFor={s.id} className="cursor-pointer flex-1">{s.label}</Label>
                           <span className="font-semibold text-primary">{s.price === 0 ? "Free" : `$${s.price}`}</span>

@@ -20,7 +20,7 @@ export default function ContactPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    submitFeedback.mutate({ data: { name: form.name, email: form.email, subject: form.subject, message: form.message, type: "contact" } }, {
+    submitFeedback.mutate({ data: { subject: form.subject, message: form.message, type: "general" } }, {
       onSuccess: () => { setSent(true); toast({ title: "Message sent!", description: "We'll reply within 24 hours." }); },
       onError: () => { setSent(true); toast({ title: "Message received", description: "Thank you! We'll be in touch soon." }); },
     });

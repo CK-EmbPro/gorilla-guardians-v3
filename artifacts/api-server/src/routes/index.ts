@@ -10,11 +10,13 @@ import reviewsRouter from "./reviews";
 import notificationsRouter from "./notifications";
 import messagesRouter from "./messages";
 import miscRouter from "./misc";
+import uploadRouter from "./upload";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
+router.use(uploadRouter);
 router.use(productsRouter);
 router.use(artisansRouter);
 router.use(experiencesRouter);

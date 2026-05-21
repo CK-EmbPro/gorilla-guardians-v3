@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, Package, Users, BookOpen, ShoppingBag, Star, MessageSquare,
   Bell, FileText, Calendar, BarChart2, Heart, LogOut, ChevronLeft, ChevronRight,
-  Megaphone, TreePine, Truck, Settings, User, DollarSign,
+  Megaphone, TreePine, Truck, Settings, User, DollarSign, PlusCircle,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ const NAV_ITEMS: NavItem[] = [
   // Artisan
   { href: "/artisan/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["artisan"] },
   { href: "/artisan/products", label: "My Products", icon: Package, roles: ["artisan"] },
-  { href: "/artisan/products/new", label: "Add Product", icon: Package, roles: ["artisan"] },
+  { href: "/artisan/products/new", label: "Add Product", icon: PlusCircle, roles: ["artisan"] },
   { href: "/artisan/earnings", label: "Earnings", icon: DollarSign, roles: ["artisan"] },
   { href: "/artisan/messages", label: "Messages", icon: MessageSquare, roles: ["artisan"] },
   // Staff
@@ -36,6 +36,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/staff/orders", label: "Orders", icon: ShoppingBag, roles: ["staff"] },
   { href: "/staff/products", label: "Products", icon: Package, roles: ["staff"] },
   { href: "/staff/messages", label: "Messages", icon: MessageSquare, roles: ["staff"] },
+  { href: "/admin/notifications", label: "Notifications", icon: Bell, roles: ["staff"] },
+  { href: "/admin/feedback", label: "Feedback", icon: Megaphone, roles: ["staff"] },
   // Admin
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "super_admin"] },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart2, roles: ["admin", "super_admin"] },
@@ -51,6 +53,11 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin/feedback", label: "Feedback", icon: Megaphone, roles: ["admin", "super_admin"] },
 ];
 
+const BOTTOM_ITEMS: NavItem[] = [
+  { href: "/profile", label: "Profile", icon: User, roles: ["customer", "artisan", "staff", "admin", "super_admin"] },
+  { href: "/admin/settings", label: "Settings", icon: Settings, roles: ["admin", "super_admin"] },
+];
+
 export default function DashboardSidebar() {
   const { user, logout } = useAuth();
   const [location] = useLocation();
@@ -59,6 +66,9 @@ export default function DashboardSidebar() {
   if (!user) return null;
 
   const visibleItems = NAV_ITEMS.filter(item => item.roles.includes(user.role));
+  const visibleBottom = BOTTOM_ITEMS.filter(item => item.roles.includes(user.role));
+
+  const isActive = (href: string) => location === href || (href !== "/" && location.startsWith(href + "/"));
 
   return (
     <aside className={cn(
@@ -79,7 +89,7 @@ export default function DashboardSidebar() {
       {/* Nav items */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-0.5">
         {visibleItems.map(item => {
-          const active = location === item.href || location.startsWith(item.href + "/");
+          const active = isActive(item.href);
           return (
             <Link
               key={item.href}
@@ -99,14 +109,35 @@ export default function DashboardSidebar() {
         })}
       </nav>
 
-      {/* Bottom */}
-      <div className="border-t border-sidebar-border p-3 space-y-1">
+      {/* Bottom links */}
+      <div className="border-t border-sidebar-border p-3 space-y-0.5">
         {!collapsed && (
-          <div className="px-3 py-2">
+          <div className="px-3 py-2 mb-1">
             <div className="text-xs font-medium truncate">{user.name}</div>
             <div className="text-[10px] opacity-60">{user.email}</div>
           </div>
         )}
+
+        {visibleBottom.map(item => {
+          const active = isActive(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              data-testid={`link-nav-${item.label.toLowerCase()}`}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+                active
+                  ? "bg-white/15 text-white"
+                  : "text-sidebar-foreground/70 hover:text-white hover:bg-white/8"
+              )}
+            >
+              <item.icon className="w-4 h-4 shrink-0" />
+              {!collapsed && <span>{item.label}</span>}
+            </Link>
+          );
+        })}
+
         <Link href="/" className="flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground/70 hover:text-white hover:bg-white/8 text-sm transition-colors">
           <ChevronLeft className="w-4 h-4 shrink-0" />
           {!collapsed && <span>Back to Site</span>}
