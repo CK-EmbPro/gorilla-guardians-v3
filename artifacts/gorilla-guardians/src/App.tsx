@@ -38,6 +38,7 @@ import AdminUsers from "@/pages/admin/users";
 import AdminReviews from "@/pages/admin/reviews";
 import AdminStories from "@/pages/admin/stories";
 import AdminEvents from "@/pages/admin/events";
+import AdminProductForm from "@/pages/admin/product-form";
 import AdminNotifications from "@/pages/admin/notifications";
 import AdminFeedback from "@/pages/admin/feedback";
 import AdminSettings from "@/pages/admin/settings";
@@ -178,6 +179,12 @@ function Router() {
       </Route>
       <Route path="/admin/analytics">
         {() => <ProtectedRoute component={AdminAnalytics} roles={["admin", "super_admin"]} />}
+      </Route>
+      <Route path="/admin/products/new">
+        {() => <ProtectedRoute component={() => <AdminProductForm />} roles={["admin", "super_admin"]} />}
+      </Route>
+      <Route path="/admin/products/:id/edit">
+        {(params) => <ProtectedRoute component={() => <AdminProductForm productId={Number(params!.id)} />} roles={["admin", "super_admin"]} />}
       </Route>
       <Route path="/admin/products">
         {() => <ProtectedRoute component={AdminProducts} roles={["admin", "super_admin", "staff"]} />}

@@ -26,7 +26,7 @@ export default function AdminExperiencesPage() {
   const updateExp = useUpdateExperience();
   const createExp = useCreateExperience();
 
-  const experiences = Array.isArray(experiencesData) ? experiencesData : [];
+  const experiences = experiencesData?.experiences ?? [];
 
   const buildExpPayload = (item: any) => ({
     title: item.title,
@@ -107,10 +107,10 @@ export default function AdminExperiencesPage() {
                     <h3 className="font-medium mb-1 line-clamp-1">{exp.title}</h3>
                     <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{exp.description}</p>
                     <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
-                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{exp.durationHours}h</span>
-                      <span className="flex items-center gap-1"><Users className="w-3 h-3" />Max {exp.maxParticipants}</span>
+                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{exp.duration}</span>
+                      <span className="flex items-center gap-1"><Users className="w-3 h-3" />Max {exp.capacity}</span>
                     </div>
-                    <Button size="sm" variant="outline" className="w-full gap-1.5 text-xs" onClick={() => { setEditItem({ ...exp, price: String(exp.price), durationHours: String(exp.durationHours), maxParticipants: String(exp.maxParticipants) }); setIsNew(false); }}>
+                    <Button size="sm" variant="outline" className="w-full gap-1.5 text-xs" onClick={() => { setEditItem({ ...exp, price: String(exp.price), durationHours: String(exp.capacity), maxParticipants: String(exp.capacity) }); setIsNew(false); }}>
                       <Edit className="w-3 h-3" /> Edit
                     </Button>
                   </div>
