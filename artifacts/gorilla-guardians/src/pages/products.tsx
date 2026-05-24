@@ -9,7 +9,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Slider } from "@/components/ui/slider";
-import { useListProducts, useListCategories, useAddToCart, useAddToWishlist } from "@workspace/api-client-react";
+import { useListProducts, useListCategories } from "@workspace/api-client-react";
+import { useCart } from "@/lib/cart";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { useToast } from "@/hooks/use-toast";
@@ -33,18 +34,24 @@ export default function ProductsPage() {
     limit: 12,
   });
 
-  const addToCart = useAddToCart();
-  const addToWishlist = useAddToWishlist();
+  const { addToCart } = useCart();
 
-  const products = productsData?.products ?? [];
-  const total = productsData?.total ?? 0;
+  const DEMO_PRODUCTS = [
+    { id: 1, name: "Imigongo Triangle Panel", price: 125, discountPrice: null, images: [], artisan: { name: "Alphonsine Umubyeyi" }, averageRating: 4.9, reviewCount: 23, stock: 5, featured: true },
+    { id: 2, name: "Peace Basket — Sunrise", price: 85, discountPrice: 70, images: [], artisan: { name: "Celestine Mukamana" }, averageRating: 5.0, reviewCount: 41, stock: 12, featured: true },
+    { id: 3, name: "Gorilla Family Sculpture", price: 280, discountPrice: null, images: [], artisan: { name: "Emmanuel Nkurunziza" }, averageRating: 4.8, reviewCount: 15, stock: 3, featured: false },
+    { id: 4, name: "Beaded Necklace", price: 45, discountPrice: 35, images: [], artisan: { name: "Celestine Mukamana" }, averageRating: 4.7, reviewCount: 38, stock: 20, featured: false },
+  ];
+
+  const apiProducts = productsData?.products ?? [];
+  const products = apiProducts.length > 0 ? apiProducts : DEMO_PRODUCTS;
+  const total = products.length;
   const totalPages = productsData?.totalPages ?? 1;
   const catList = Array.isArray(categories) ? categories : [];
 
-  const handleAddToCart = (productId: number, name: string) => {
-    addToCart.mutate({ data: { productId, quantity: 1 } }, {
-      onSuccess: () => toast({ title: "Added to cart", description: `${name} added to your cart.` }),
-    });
+  const handleAddToCart = (product: any) => {
+    addToCart(product, 1);
+    toast({ title: "Added to cart", description: `${product.name} added to your cart.` });
   };
 
   return (
@@ -148,7 +155,7 @@ export default function ProductsPage() {
         </div>
 
         {/* Product grid */}
-        {isLoading ? (
+        {isLoading && products.length === 0 ? (
           <div className={`grid gap-6 ${view === "grid" ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4" : "grid-cols-1"}`}>
             {Array.from({ length: 8 }).map((_, i) => (
               <Card key={i} className="animate-pulse">
@@ -216,8 +223,7 @@ export default function ProductsPage() {
                       <Button
                         size="sm"
                         className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs h-8"
-                        onClick={() => handleAddToCart(product.id, product.name)}
-                        disabled={addToCart.isPending}
+                        onClick={() => handleAddToCart(product)}
                         data-testid={`button-add-cart-${product.id}`}
                       >
                         <ShoppingCart className="w-3 h-3 mr-1" /> Add to Cart
@@ -250,7 +256,7 @@ export default function ProductsPage() {
                               <span className="text-xs">{product.averageRating} ({product.reviewCount})</span>
                             </div>
                           )}
-                          <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs" onClick={() => handleAddToCart(product.id, product.name)} data-testid={`button-add-cart-list-${product.id}`}>
+                          <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs" onClick={() => handleAddToCart(product)} data-testid={`button-add-cart-list-${product.id}`}>
                             Add to Cart
                           </Button>
                         </div>

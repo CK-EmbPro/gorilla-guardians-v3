@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useGetProduct, useListReviews, useListProducts, useAddToCart, useAddToWishlist, getGetProductQueryKey } from "@workspace/api-client-react";
+import { useGetProduct, useListReviews, useListProducts, useAddToWishlist, getGetProductQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useCart } from "@/lib/cart";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { useToast } from "@/hooks/use-toast";
@@ -22,7 +23,7 @@ export default function ProductDetailPage() {
   const { data: reviews } = useListReviews({ productId: id, status: "approved" });
   const { data: relatedData } = useListProducts({ categoryId: (product as any)?.categoryId, limit: 4 });
 
-  const addToCart = useAddToCart();
+  const { addToCart: addToCartLocal } = useCart();
   const addToWishlist = useAddToWishlist();
 
   const [qty, setQty] = useState(1);
@@ -33,11 +34,10 @@ export default function ProductDetailPage() {
   const relatedProducts = relatedData?.products?.filter((p: any) => p.id !== id).slice(0, 4) ?? [];
 
   const handleAddToCart = () => {
-    addToCart.mutate({ data: { productId: id, quantity: qty } }, {
-      onSuccess: () => {
-        toast({ title: "Added to cart", description: `${qty}x ${(product as any)?.name} added to your cart.` });
-      },
-    });
+    const p = resolvedProduct;
+    if (!p) return;
+    addToCartLocal(p, qty);
+    toast({ title: "Added to cart", description: `${qty}x ${p.name} added to your cart.` });
   };
 
   const handleWishlist = () => {
@@ -213,7 +213,7 @@ export default function ProductDetailPage() {
               <Button
                 className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
                 onClick={handleAddToCart}
-                disabled={addToCart.isPending || p.stock === 0}
+                disabled={p.stock === 0}
                 data-testid="button-add-to-cart"
               >
                 <ShoppingCart className="w-4 h-4" />

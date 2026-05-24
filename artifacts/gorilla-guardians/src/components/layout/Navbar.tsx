@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth, getRedirectPath } from "@/lib/auth";
-import { useGetCart } from "@workspace/api-client-react";
+import { useCart } from "@/lib/cart";
 
 const LANGUAGES = [
   { code: "en", label: "EN", full: "English" },
@@ -28,8 +28,7 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [lang, setLang] = useState("en");
 
-  const { data: cart } = useGetCart();
-  const cartCount = cart?.itemCount ?? 0;
+  const { itemCount: cartCount } = useCart();
 
   const dashboardPath = user ? getRedirectPath(user.role) : "/login";
 
