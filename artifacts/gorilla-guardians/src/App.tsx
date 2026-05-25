@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth, type UserRole } from "@/lib/auth";
 import { CartProvider } from "@/lib/cart";
+import { NotificationsProvider } from "@/lib/useNotifications";
 
 // Public pages
 import HomePage from "@/pages/home";
@@ -26,6 +27,7 @@ import FaqPage from "@/pages/faq";
 import ContactPage from "@/pages/contact";
 import NotFound from "@/pages/not-found";
 import AccessDeniedPage from "@/pages/access-denied";
+import NotificationsPage from "@/pages/notifications";
 
 // Admin pages
 import AdminDashboard from "@/pages/admin/dashboard";
@@ -113,6 +115,7 @@ function Router() {
       <Route path="/cart" component={CartPage} />
       <Route path="/checkout" component={CheckoutPage} />
       <Route path="/access-denied" component={AccessDeniedPage} />
+      <Route path="/notifications" component={NotificationsPage} />
 
       {/* Shared profile — any authenticated role */}
       <Route path="/profile">
@@ -231,12 +234,14 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <CartProvider>
-          <TooltipProvider>
-            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-              <Router />
-            </WouterRouter>
-            <Toaster />
-          </TooltipProvider>
+          <NotificationsProvider>
+            <TooltipProvider>
+              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                <Router />
+              </WouterRouter>
+              <Toaster />
+            </TooltipProvider>
+          </NotificationsProvider>
         </CartProvider>
       </AuthProvider>
     </QueryClientProvider>

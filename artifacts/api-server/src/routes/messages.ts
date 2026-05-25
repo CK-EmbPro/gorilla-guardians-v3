@@ -6,11 +6,19 @@ import {
   CreateConversationBody,
   SendMessageBody,
 } from "@workspace/api-zod";
+import { sseManager } from "../lib/sse";
+import { createNotification } from "../lib/notificationHelper";
 
 const router: IRouter = Router();
 
+const safe = (u: typeof usersTable.$inferSelect | undefined) => u ? {
+  id: u.id, email: u.email, name: u.name, role: u.role, avatar: u.avatar ?? null,
+  phone: u.phone ?? null, address: u.address ?? null, language: u.language, isActive: u.isActive,
+  createdAt: u.createdAt.toISOString(),
+} : null;
+
 router.get("/conversations", async (req, res): Promise<void> => {
-  const userId = (req.session as any).userId ?? 1;
+  const userId = Number(req.query.userId) || ((req.session as any).userId ?? 1);
   const convs = await db.select().from(conversationsTable).where(
     or(eq(conversationsTable.participant1Id, userId), eq(conversationsTable.participant2Id, userId))
   ).orderBy(desc(conversationsTable.updatedAt));
@@ -20,14 +28,13 @@ router.get("/conversations", async (req, res): Promise<void> => {
     const unread = await db.select().from(messagesTable).where(
       and(eq(messagesTable.conversationId, conv.id), eq(messagesTable.isRead, false))
     );
-    const safe = (u: typeof usersTable.$inferSelect | undefined) => u ? {
-      id: u.id, email: u.email, name: u.name, role: u.role, avatar: u.avatar ?? null,
-      phone: u.phone ?? null, address: u.address ?? null, language: u.language, isActive: u.isActive,
-      createdAt: u.createdAt.toISOString(),
-    } : null;
+    const otherUser = conv.participant1Id === userId ? safe(p2) : safe(p1);
     return {
-      id: conv.id, participants: [safe(p1), safe(p2)].filter(Boolean),
-      lastMessage: conv.lastMessage ?? null, unreadCount: unread.length,
+      id: conv.id,
+      participants: [safe(p1), safe(p2)].filter(Boolean),
+      otherUser,
+      lastMessage: conv.lastMessage ?? null,
+      unreadCount: unread.length,
       updatedAt: conv.updatedAt.toISOString(),
     };
   }));
@@ -35,7 +42,7 @@ router.get("/conversations", async (req, res): Promise<void> => {
 });
 
 router.post("/conversations", async (req, res): Promise<void> => {
-  const userId = (req.session as any).userId ?? 1;
+  const userId = Number(req.query.userId) || ((req.session as any).userId ?? 1);
   const parsed = CreateConversationBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const existing = await db.select().from(conversationsTable).where(
@@ -48,15 +55,16 @@ router.post("/conversations", async (req, res): Promise<void> => {
     const conv = existing[0];
     const [p1] = await db.select().from(usersTable).where(eq(usersTable.id, conv.participant1Id));
     const [p2] = await db.select().from(usersTable).where(eq(usersTable.id, conv.participant2Id));
-    const safe = (u: any) => u ? { id: u.id, email: u.email, name: u.name, role: u.role, avatar: u.avatar ?? null, phone: null, address: null, language: u.language, isActive: u.isActive, createdAt: u.createdAt.toISOString() } : null;
-    res.status(201).json({ id: conv.id, participants: [safe(p1), safe(p2)].filter(Boolean), lastMessage: conv.lastMessage ?? null, unreadCount: 0, updatedAt: conv.updatedAt.toISOString() });
+    const otherUser = conv.participant1Id === userId ? safe(p2) : safe(p1);
+    res.status(201).json({ id: conv.id, participants: [safe(p1), safe(p2)].filter(Boolean), otherUser, lastMessage: conv.lastMessage ?? null, unreadCount: 0, updatedAt: conv.updatedAt.toISOString() });
     return;
   }
   const [conv] = await db.insert(conversationsTable).values({
     participant1Id: userId,
     participant2Id: parsed.data.participantId,
   }).returning();
-  res.status(201).json({ id: conv.id, participants: [], lastMessage: null, unreadCount: 0, updatedAt: conv.updatedAt.toISOString() });
+  const [p2] = await db.select().from(usersTable).where(eq(usersTable.id, parsed.data.participantId));
+  res.status(201).json({ id: conv.id, participants: [safe(p2)].filter(Boolean), otherUser: safe(p2), lastMessage: null, unreadCount: 0, updatedAt: conv.updatedAt.toISOString() });
 });
 
 router.get("/messages", async (req, res): Promise<void> => {
@@ -71,9 +79,10 @@ router.get("/messages", async (req, res): Promise<void> => {
 });
 
 router.post("/messages", async (req, res): Promise<void> => {
-  const userId = (req.session as any).userId ?? 1;
+  const userId = Number(req.query.userId) || ((req.session as any).userId ?? 1);
   const parsed = SendMessageBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
   const [message] = await db.insert(messagesTable).values({
     conversationId: parsed.data.conversationId,
     senderId: userId,
@@ -81,8 +90,43 @@ router.post("/messages", async (req, res): Promise<void> => {
     fileUrl: parsed.data.fileUrl ?? null,
     isRead: false,
   }).returning();
-  await db.update(conversationsTable).set({ lastMessage: parsed.data.content }).where(eq(conversationsTable.id, parsed.data.conversationId));
-  res.status(201).json({ ...message, fileUrl: message.fileUrl ?? null, createdAt: message.createdAt.toISOString() });
+
+  await db.update(conversationsTable)
+    .set({ lastMessage: parsed.data.content })
+    .where(eq(conversationsTable.id, parsed.data.conversationId));
+
+  const serialized = { ...message, fileUrl: message.fileUrl ?? null, createdAt: message.createdAt.toISOString() };
+
+  const [conv] = await db.select().from(conversationsTable).where(eq(conversationsTable.id, parsed.data.conversationId));
+  if (conv) {
+    const receiverId = conv.participant1Id === userId ? conv.participant2Id : conv.participant1Id;
+    const [sender] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+    const senderName = sender?.name ?? "Someone";
+
+    sseManager.emit(receiverId, "message", {
+      conversationId: parsed.data.conversationId,
+      message: serialized,
+      senderId: userId,
+    });
+
+    await createNotification({
+      userId: receiverId,
+      type: "message",
+      title: `New message from ${senderName}`,
+      message: parsed.data.content.length > 60 ? parsed.data.content.slice(0, 60) + "…" : parsed.data.content,
+      link: "/messages",
+    });
+  }
+
+  res.status(201).json(serialized);
+});
+
+router.patch("/messages/:id/read", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [message] = await db.update(messagesTable).set({ isRead: true }).where(eq(messagesTable.id, id)).returning();
+  if (!message) { res.status(404).json({ error: "Message not found" }); return; }
+  res.json({ ...message, fileUrl: message.fileUrl ?? null, createdAt: message.createdAt.toISOString() });
 });
 
 export default router;

@@ -11,12 +11,14 @@ import notificationsRouter from "./notifications";
 import messagesRouter from "./messages";
 import miscRouter from "./misc";
 import uploadRouter from "./upload";
+import streamRouter from "./stream";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
 router.use(uploadRouter);
+router.use(streamRouter);
 router.use(productsRouter);
 router.use(artisansRouter);
 router.use(experiencesRouter);

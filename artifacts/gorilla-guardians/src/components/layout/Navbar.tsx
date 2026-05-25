@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ShoppingCart, Heart, Bell, Menu, X, User, LogOut, ChevronDown, Globe } from "lucide-react";
+import { ShoppingCart, Heart, Menu, X, User, LogOut, ChevronDown, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth, getRedirectPath } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
+import NotificationBell from "./NotificationBell";
 
 const LANGUAGES = [
   { code: "en", label: "EN", full: "English" },
@@ -94,6 +95,9 @@ export default function Navbar() {
                 )}
               </Button>
             </Link>
+
+            {/* Notification Bell — only for logged-in users */}
+            {user && <NotificationBell />}
 
             {/* User menu */}
             {user ? (
