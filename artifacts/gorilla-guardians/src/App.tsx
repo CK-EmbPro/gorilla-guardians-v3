@@ -28,6 +28,11 @@ import ContactPage from "@/pages/contact";
 import NotFound from "@/pages/not-found";
 import AccessDeniedPage from "@/pages/access-denied";
 import NotificationsPage from "@/pages/notifications";
+import TrackPage from "@/pages/track";
+
+// Delivery / order detail pages
+import CustomerOrderDetail from "@/pages/customer/order-detail";
+import AdminDelivery from "@/pages/admin/delivery";
 
 // Admin pages
 import AdminDashboard from "@/pages/admin/dashboard";
@@ -116,6 +121,8 @@ function Router() {
       <Route path="/checkout" component={CheckoutPage} />
       <Route path="/access-denied" component={AccessDeniedPage} />
       <Route path="/notifications" component={NotificationsPage} />
+      <Route path="/track" component={TrackPage} />
+      <Route path="/track/:trackingNumber" component={TrackPage} />
 
       {/* Shared profile — any authenticated role */}
       <Route path="/profile">
@@ -125,6 +132,9 @@ function Router() {
       {/* Customer */}
       <Route path="/customer/dashboard">
         {() => <ProtectedRoute component={CustomerDashboard} roles={["customer"]} />}
+      </Route>
+      <Route path="/customer/orders/:id">
+        {() => <ProtectedRoute component={CustomerOrderDetail} roles={["customer"]} />}
       </Route>
       <Route path="/customer/orders">
         {() => <ProtectedRoute component={CustomerOrders} roles={["customer"]} />}
@@ -212,6 +222,9 @@ function Router() {
       </Route>
       <Route path="/admin/events">
         {() => <ProtectedRoute component={AdminEvents} roles={["admin", "super_admin"]} />}
+      </Route>
+      <Route path="/admin/delivery">
+        {() => <ProtectedRoute component={AdminDelivery} roles={["admin", "super_admin", "staff"]} />}
       </Route>
       <Route path="/admin/notifications">
         {() => <ProtectedRoute component={AdminNotifications} roles={["admin", "super_admin", "staff"]} />}

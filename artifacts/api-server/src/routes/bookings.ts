@@ -8,6 +8,7 @@ import {
   UpdateBookingBody,
   UpdateBookingParams,
 } from "@workspace/api-zod";
+import { createNotification, notifyAdmins } from "../lib/notificationHelper";
 
 const router: IRouter = Router();
 
@@ -60,6 +61,24 @@ router.post("/bookings", async (req, res): Promise<void> => {
     paymentStatus: "pending",
     specialRequests: parsed.data.specialRequests ?? null,
   }).returning();
+
+  // Notify customer
+  await createNotification({
+    userId,
+    type: "booking",
+    title: "Booking Confirmed!",
+    message: `Your booking for "${exp.title}" on ${parsed.data.date} is confirmed.`,
+    link: `/customer/bookings`,
+  });
+
+  // Notify admins
+  await notifyAdmins({
+    type: "booking",
+    title: "New Booking",
+    message: `A new booking was made for "${exp.title}" on ${parsed.data.date} (${parsed.data.participants} participant${parsed.data.participants !== 1 ? "s" : ""})`,
+    link: `/admin/experiences`,
+  });
+
   res.status(201).json(await buildBooking(booking));
 });
 
@@ -77,8 +96,27 @@ router.patch("/bookings/:id", async (req, res): Promise<void> => {
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   const parsed = UpdateBookingBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const [prevBooking] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, params.data.id));
   const [booking] = await db.update(bookingsTable).set(parsed.data as any).where(eq(bookingsTable.id, params.data.id)).returning();
   if (!booking) { res.status(404).json({ error: "Booking not found" }); return; }
+
+  // Notify on status change
+  if (parsed.data.status && prevBooking && parsed.data.status !== prevBooking.status) {
+    const statusMessages: Record<string, string> = {
+      confirmed: "Your booking has been confirmed!",
+      cancelled: "Your booking has been cancelled.",
+      completed: "Your experience is complete. Thank you!",
+      pending: "Your booking is pending review.",
+    };
+    await createNotification({
+      userId: booking.userId,
+      type: "booking",
+      title: `Booking ${parsed.data.status.charAt(0).toUpperCase() + parsed.data.status.slice(1)}`,
+      message: statusMessages[parsed.data.status] ?? `Your booking status changed to ${parsed.data.status}`,
+      link: `/customer/bookings`,
+    });
+  }
+
   res.json(await buildBooking(booking));
 });
 

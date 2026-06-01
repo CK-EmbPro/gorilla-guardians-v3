@@ -12,6 +12,7 @@ import messagesRouter from "./messages";
 import miscRouter from "./misc";
 import uploadRouter from "./upload";
 import streamRouter from "./stream";
+import deliveryRouter from "./delivery";
 
 const router: IRouter = Router();
 
@@ -27,6 +28,7 @@ router.use(bookingsRouter);
 router.use(reviewsRouter);
 router.use(notificationsRouter);
 router.use(messagesRouter);
+router.use(deliveryRouter);
 router.use(miscRouter);
 
 export default router;

@@ -36,6 +36,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/staff/orders", label: "Orders", icon: ShoppingBag, roles: ["staff"] },
   { href: "/staff/products", label: "Products", icon: Package, roles: ["staff"] },
   { href: "/staff/messages", label: "Messages", icon: MessageSquare, roles: ["staff"] },
+  { href: "/admin/delivery", label: "Delivery", icon: Truck, roles: ["staff"] },
   { href: "/admin/notifications", label: "Notifications", icon: Bell, roles: ["staff"] },
   { href: "/admin/feedback", label: "Feedback", icon: Megaphone, roles: ["staff"] },
   // Admin
@@ -45,6 +46,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin/artisans", label: "Artisans", icon: Users, roles: ["admin", "super_admin"] },
   { href: "/admin/experiences", label: "Experiences", icon: TreePine, roles: ["admin", "super_admin"] },
   { href: "/admin/orders", label: "Orders", icon: ShoppingBag, roles: ["admin", "super_admin"] },
+  { href: "/admin/delivery", label: "Delivery", icon: Truck, roles: ["admin", "super_admin"] },
   { href: "/admin/users", label: "Users", icon: User, roles: ["admin", "super_admin"] },
   { href: "/admin/reviews", label: "Reviews", icon: Star, roles: ["admin", "super_admin"] },
   { href: "/admin/stories", label: "Stories", icon: BookOpen, roles: ["admin", "super_admin"] },
