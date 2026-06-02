@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, and, desc } from "drizzle-orm";
-import { db, bookingsTable, experiencesTable } from "@workspace/db";
+import { eq, and, desc, ilike, or } from "drizzle-orm";
+import { db, bookingsTable, experiencesTable, usersTable } from "@workspace/db";
 import {
   ListBookingsQueryParams,
   GetBookingParams,
@@ -14,12 +14,14 @@ const router: IRouter = Router();
 
 async function buildBooking(booking: typeof bookingsTable.$inferSelect) {
   const [exp] = await db.select().from(experiencesTable).where(eq(experiencesTable.id, booking.experienceId));
+  const [user] = await db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, phone: usersTable.phone, avatar: usersTable.avatar }).from(usersTable).where(eq(usersTable.id, booking.userId));
   return {
     ...booking,
     totalAmount: Number(booking.totalAmount),
     specialRequests: booking.specialRequests ?? null,
     createdAt: booking.createdAt.toISOString(),
     updatedAt: undefined,
+    user: user ? { id: user.id, name: user.name, email: user.email, phone: user.phone ?? null, avatar: user.avatar ?? null } : null,
     experience: exp ? {
       id: exp.id, title: exp.title, slug: exp.slug, description: exp.description,
       type: exp.type, images: exp.images, videoUrl: exp.videoUrl ?? null,
@@ -41,7 +43,18 @@ router.get("/bookings", async (req, res): Promise<void> => {
   const where = conditions.length > 0 ? and(...conditions) : undefined;
   const bookings = await db.select().from(bookingsTable).where(where).orderBy(desc(bookingsTable.createdAt));
   const rich = await Promise.all(bookings.map(buildBooking));
-  res.json(rich);
+
+  const search = req.query.search as string | undefined;
+  const filtered = search
+    ? rich.filter(b =>
+        b.user?.name?.toLowerCase().includes(search.toLowerCase()) ||
+        b.user?.email?.toLowerCase().includes(search.toLowerCase()) ||
+        b.experience?.title?.toLowerCase().includes(search.toLowerCase()) ||
+        String(b.id).includes(search)
+      )
+    : rich;
+
+  res.json(filtered);
 });
 
 router.post("/bookings", async (req, res): Promise<void> => {
@@ -62,21 +75,19 @@ router.post("/bookings", async (req, res): Promise<void> => {
     specialRequests: parsed.data.specialRequests ?? null,
   }).returning();
 
-  // Notify customer
   await createNotification({
     userId,
     type: "booking",
-    title: "Booking Confirmed!",
-    message: `Your booking for "${exp.title}" on ${parsed.data.date} is confirmed.`,
+    title: "Booking Submitted!",
+    message: `Your booking for "${exp.title}" on ${parsed.data.date} has been submitted and is pending confirmation.`,
     link: `/customer/bookings`,
   });
 
-  // Notify admins
   await notifyAdmins({
     type: "booking",
     title: "New Booking",
     message: `A new booking was made for "${exp.title}" on ${parsed.data.date} (${parsed.data.participants} participant${parsed.data.participants !== 1 ? "s" : ""})`,
-    link: `/admin/experiences`,
+    link: `/admin/bookings`,
   });
 
   res.status(201).json(await buildBooking(booking));
@@ -100,12 +111,12 @@ router.patch("/bookings/:id", async (req, res): Promise<void> => {
   const [booking] = await db.update(bookingsTable).set(parsed.data as any).where(eq(bookingsTable.id, params.data.id)).returning();
   if (!booking) { res.status(404).json({ error: "Booking not found" }); return; }
 
-  // Notify on status change
   if (parsed.data.status && prevBooking && parsed.data.status !== prevBooking.status) {
     const statusMessages: Record<string, string> = {
-      confirmed: "Your booking has been confirmed!",
+      approved: "Your booking has been approved and is awaiting final confirmation.",
+      confirmed: "Your booking has been confirmed! We look forward to seeing you.",
       cancelled: "Your booking has been cancelled.",
-      completed: "Your experience is complete. Thank you!",
+      completed: "Your experience is complete. We hope you loved it!",
       pending: "Your booking is pending review.",
     };
     await createNotification({

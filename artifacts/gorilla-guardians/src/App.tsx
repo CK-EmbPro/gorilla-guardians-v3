@@ -49,6 +49,8 @@ import AdminProductForm from "@/pages/admin/product-form";
 import AdminNotifications from "@/pages/admin/notifications";
 import AdminFeedback from "@/pages/admin/feedback";
 import AdminSettings from "@/pages/admin/settings";
+import AdminBookings from "@/pages/admin/bookings";
+import AdminHomepage from "@/pages/admin/homepage";
 
 // Staff pages
 import StaffDashboard from "@/pages/staff/dashboard";
@@ -234,6 +236,12 @@ function Router() {
       </Route>
       <Route path="/admin/settings">
         {() => <ProtectedRoute component={AdminSettings} roles={["admin", "super_admin"]} />}
+      </Route>
+      <Route path="/admin/bookings">
+        {() => <ProtectedRoute component={AdminBookings} roles={["admin", "super_admin", "staff"]} />}
+      </Route>
+      <Route path="/admin/homepage">
+        {() => <ProtectedRoute component={AdminHomepage} roles={["admin", "super_admin"]} />}
       </Route>
 
       {/* Catch-all */}

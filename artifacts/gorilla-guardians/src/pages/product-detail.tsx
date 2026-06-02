@@ -6,12 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useGetProduct, useListReviews, useListProducts, useAddToWishlist, getGetProductQueryKey } from "@workspace/api-client-react";
+import { useGetProduct, useListReviews, useListProducts, useAddToWishlist, useCreateReview, getGetProductQueryKey, getListReviewsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCart } from "@/lib/cart";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth";
+import { Textarea } from "@/components/ui/textarea";
+import { Link as WouterLink } from "wouter";
 
 export default function ProductDetailPage() {
   const [, params] = useRoute("/products/:id");
@@ -26,9 +29,17 @@ export default function ProductDetailPage() {
   const { addToCart: addToCartLocal } = useCart();
   const addToWishlist = useAddToWishlist();
 
+  const { user } = useAuth();
+  const createReview = useCreateReview();
+
   const [qty, setQty] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [wishlisted, setWishlisted] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewTitle, setReviewTitle] = useState("");
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [reviewHover, setReviewHover] = useState(0);
 
   const reviewList = Array.isArray(reviews) ? reviews : [];
   const relatedProducts = relatedData?.products?.filter((p: any) => p.id !== id).slice(0, 4) ?? [];
@@ -47,6 +58,19 @@ export default function ProductDetailPage() {
         onSuccess: () => toast({ title: "Added to wishlist" }),
       });
     }
+  };
+
+  const handleSubmitReview = () => {
+    if (!reviewComment.trim()) { toast({ title: "Please write a comment", variant: "destructive" }); return; }
+    createReview.mutate({ data: { productId: id, rating: reviewRating, title: reviewTitle || undefined, comment: reviewComment } }, {
+      onSuccess: () => {
+        setReviewSubmitted(true);
+        setReviewComment("");
+        setReviewTitle("");
+        queryClient.invalidateQueries({ queryKey: getListReviewsQueryKey() });
+      },
+      onError: () => toast({ title: "Failed to submit review", variant: "destructive" }),
+    });
   };
 
   const resolvedProduct = (product as any) ?? null;
@@ -290,6 +314,79 @@ export default function ProductDetailPage() {
                   ))}
                 </div>
               )}
+
+              {/* Write a Review */}
+              <div className="mt-10 border-t border-border pt-8">
+                <h3 className="font-serif text-xl font-bold mb-5">Write a Review</h3>
+                {!user ? (
+                  <div className="bg-muted/40 rounded-xl p-6 text-center">
+                    <p className="text-muted-foreground mb-3">Please log in to share your experience with this product.</p>
+                    <WouterLink href="/login">
+                      <Button variant="outline" className="border-primary text-primary">Log In to Review</Button>
+                    </WouterLink>
+                  </div>
+                ) : reviewSubmitted ? (
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
+                    <div className="text-2xl mb-2">✓</div>
+                    <p className="font-semibold text-green-800">Review submitted!</p>
+                    <p className="text-sm text-green-700 mt-1">Your review is pending moderation and will appear once approved.</p>
+                    <button onClick={() => setReviewSubmitted(false)} className="mt-3 text-sm text-green-700 underline underline-offset-2">Write another</button>
+                  </div>
+                ) : (
+                  <Card className="border-border">
+                    <CardContent className="p-5 space-y-4">
+                      <div>
+                        <label className="text-sm font-medium block mb-2">Your Rating</label>
+                        <div className="flex gap-1">
+                          {[1,2,3,4,5].map(s => (
+                            <button
+                              key={s}
+                              onClick={() => setReviewRating(s)}
+                              onMouseEnter={() => setReviewHover(s)}
+                              onMouseLeave={() => setReviewHover(0)}
+                              className="p-0.5"
+                              data-testid={`star-${s}`}
+                            >
+                              <Star className={`w-7 h-7 transition-colors ${s <= (reviewHover || reviewRating) ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`} />
+                            </button>
+                          ))}
+                          <span className="ml-2 text-sm text-muted-foreground self-center">{["","Poor","Fair","Good","Great","Excellent"][reviewHover || reviewRating]}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium block mb-1">Review Title <span className="text-muted-foreground font-normal">(optional)</span></label>
+                        <input
+                          type="text"
+                          value={reviewTitle}
+                          onChange={e => setReviewTitle(e.target.value)}
+                          placeholder="Summarize your experience..."
+                          className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                          data-testid="input-review-title"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium block mb-1">Your Review</label>
+                        <Textarea
+                          value={reviewComment}
+                          onChange={e => setReviewComment(e.target.value)}
+                          placeholder="Tell others about your experience with this product. What did you love? How is the quality?"
+                          rows={4}
+                          data-testid="textarea-review-comment"
+                        />
+                      </div>
+                      <Button
+                        onClick={handleSubmitReview}
+                        disabled={createReview.isPending || !reviewComment.trim()}
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                        data-testid="button-submit-review"
+                      >
+                        {createReview.isPending ? "Submitting..." : "Submit Review"}
+                      </Button>
+                      <p className="text-xs text-muted-foreground">Reviews are reviewed by our team before appearing publicly.</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             </TabsContent>
             <TabsContent value="artisan" className="mt-6">
               {(product as any)?.artisan ? (

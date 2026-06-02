@@ -6,10 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useGetExperience, useCreateBooking, getGetExperienceQueryKey } from "@workspace/api-client-react";
+import { useGetExperience, useCreateBooking, useListReviews, useCreateReview, getGetExperienceQueryKey, getListReviewsQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 
 export default function ExperienceDetailPage() {
   const [, params] = useRoute("/experiences/:id");
@@ -19,8 +23,20 @@ export default function ExperienceDetailPage() {
   const { data: experience, isLoading } = useGetExperience(id, { query: { enabled: !!id, queryKey: getGetExperienceQueryKey(id) } });
   const createBooking = useCreateBooking();
 
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const createReview = useCreateReview();
+
+  const { data: reviewsData } = useListReviews({ experienceId: id, status: "approved" });
+  const reviewList: any[] = Array.isArray(reviewsData) ? reviewsData : [];
+
   const [date, setDate] = useState("");
   const [participants, setParticipants] = useState(1);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewTitle, setReviewTitle] = useState("");
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [reviewHover, setReviewHover] = useState(0);
 
   const DEMO_EXPERIENCES: Record<number, any> = {
 
@@ -41,6 +57,19 @@ export default function ExperienceDetailPage() {
       onError: () => {
         toast({ title: "Booking submitted", description: "We will confirm your booking shortly.", variant: "default" });
       },
+    });
+  };
+
+  const handleSubmitReview = () => {
+    if (!reviewComment.trim()) { toast({ title: "Please write a comment", variant: "destructive" }); return; }
+    createReview.mutate({ data: { experienceId: id, rating: reviewRating, title: reviewTitle || undefined, comment: reviewComment } }, {
+      onSuccess: () => {
+        setReviewSubmitted(true);
+        setReviewComment("");
+        setReviewTitle("");
+        queryClient.invalidateQueries({ queryKey: getListReviewsQueryKey() });
+      },
+      onError: () => toast({ title: "Failed to submit review", variant: "destructive" }),
     });
   };
 
@@ -151,6 +180,111 @@ export default function ExperienceDetailPage() {
                 <Badge variant="outline" className="capitalize">{exp.difficultyLevel}</Badge>
               </div>
             )}
+
+            {/* Reviews */}
+            <Separator />
+            <div>
+              <h2 className="font-serif text-2xl font-bold mb-5">
+                Reviews {reviewList.length > 0 && <span className="text-muted-foreground text-lg font-normal">({reviewList.length})</span>}
+              </h2>
+
+              {reviewList.length > 0 ? (
+                <div className="space-y-4 mb-8">
+                  {reviewList.map((review: any) => (
+                    <Card key={review.id} className="border-border" data-testid={`card-review-${review.id}`}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <div className="font-semibold text-sm">{review.user?.name ?? "Verified Guest"}</div>
+                            <div className="flex items-center gap-1 mt-1">
+                              {[1,2,3,4,5].map(s => (
+                                <Star key={s} className={`w-3.5 h-3.5 ${s <= review.rating ? "fill-accent text-accent" : "text-muted-foreground/30"}`} />
+                              ))}
+                            </div>
+                          </div>
+                          <div className="text-xs text-muted-foreground">{new Date(review.createdAt).toLocaleDateString()}</div>
+                        </div>
+                        {review.title && <p className="font-medium text-sm mb-1">{review.title}</p>}
+                        <p className="text-sm text-muted-foreground">{review.comment}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-sm mb-8">No reviews yet. Be the first to review this experience!</p>
+              )}
+
+              {/* Write a Review */}
+              <h3 className="font-semibold text-lg mb-4">Write a Review</h3>
+              {!user ? (
+                <div className="bg-muted/40 rounded-xl p-6 text-center">
+                  <p className="text-muted-foreground mb-3">Please log in to share your experience.</p>
+                  <Link href="/login">
+                    <Button variant="outline" className="border-primary text-primary">Log In to Review</Button>
+                  </Link>
+                </div>
+              ) : reviewSubmitted ? (
+                <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
+                  <div className="text-2xl mb-2">✓</div>
+                  <p className="font-semibold text-green-800">Review submitted!</p>
+                  <p className="text-sm text-green-700 mt-1">Your review is pending moderation and will appear once approved.</p>
+                  <button onClick={() => setReviewSubmitted(false)} className="mt-3 text-sm text-green-700 underline underline-offset-2">Write another</button>
+                </div>
+              ) : (
+                <Card className="border-border">
+                  <CardContent className="p-5 space-y-4">
+                    <div>
+                      <label className="text-sm font-medium block mb-2">Your Rating</label>
+                      <div className="flex gap-1">
+                        {[1,2,3,4,5].map(s => (
+                          <button
+                            key={s}
+                            onClick={() => setReviewRating(s)}
+                            onMouseEnter={() => setReviewHover(s)}
+                            onMouseLeave={() => setReviewHover(0)}
+                            className="p-0.5"
+                            data-testid={`star-${s}`}
+                          >
+                            <Star className={`w-7 h-7 transition-colors ${s <= (reviewHover || reviewRating) ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`} />
+                          </button>
+                        ))}
+                        <span className="ml-2 text-sm text-muted-foreground self-center">{["","Poor","Fair","Good","Great","Excellent"][reviewHover || reviewRating]}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium block mb-1">Review Title <span className="text-muted-foreground font-normal">(optional)</span></label>
+                      <input
+                        type="text"
+                        value={reviewTitle}
+                        onChange={e => setReviewTitle(e.target.value)}
+                        placeholder="Summarize your experience..."
+                        className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                        data-testid="input-review-title"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium block mb-1">Your Review</label>
+                      <Textarea
+                        value={reviewComment}
+                        onChange={e => setReviewComment(e.target.value)}
+                        placeholder="How was your experience? What made it special?"
+                        rows={4}
+                        data-testid="textarea-review-comment"
+                      />
+                    </div>
+                    <Button
+                      onClick={handleSubmitReview}
+                      disabled={createReview.isPending || !reviewComment.trim()}
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                      data-testid="button-submit-review"
+                    >
+                      {createReview.isPending ? "Submitting..." : "Submit Review"}
+                    </Button>
+                    <p className="text-xs text-muted-foreground">Reviews are reviewed by our team before appearing publicly.</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </div>
 
           {/* Booking card */}
