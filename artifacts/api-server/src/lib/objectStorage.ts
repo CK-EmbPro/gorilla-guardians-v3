@@ -175,6 +175,11 @@ export class ObjectStorageService {
     return `/objects/${entityId}`;
   }
 
+  async deleteObjectEntity(objectPath: string): Promise<void> {
+    const objectFile = await this.getObjectEntityFile(objectPath);
+    await objectFile.delete();
+  }
+
   async trySetObjectEntityAclPolicy(
     rawPath: string,
     aclPolicy: ObjectAclPolicy

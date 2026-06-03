@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
 import { Upload, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -10,6 +9,26 @@ interface ImageUploadProps {
   className?: string;
   label?: string;
   aspect?: "square" | "video" | "wide";
+}
+
+const STORAGE_ORIGIN = "/api/storage/objects/";
+
+function isStorageUrl(url: string): boolean {
+  return url.startsWith(STORAGE_ORIGIN);
+}
+
+function objectPathFromUrl(url: string): string {
+  return url.slice("/api/storage".length);
+}
+
+async function deleteStorageObject(url: string): Promise<void> {
+  if (!isStorageUrl(url)) return;
+  const objectPath = objectPathFromUrl(url);
+  try {
+    await fetch(`/api/storage${objectPath}`, { method: "DELETE" });
+  } catch {
+    // best-effort — don't block the user
+  }
 }
 
 export function ImageUpload({ value, onChange, className, label, aspect = "video" }: ImageUploadProps) {
@@ -37,6 +56,8 @@ export function ImageUpload({ value, onChange, className, label, aspect = "video
     reader.onload = (e) => setPreview(e.target?.result as string);
     reader.readAsDataURL(file);
 
+    const previousUrl = preview;
+
     setUploading(true);
     try {
       const urlRes = await fetch("/api/storage/uploads/request-url", {
@@ -62,11 +83,26 @@ export function ImageUpload({ value, onChange, className, label, aspect = "video
       onChange(url);
       setPreview(url);
       toast({ title: "Image uploaded successfully" });
+
+      // Delete the old image after the new one is safely stored
+      if (previousUrl) {
+        deleteStorageObject(previousUrl);
+      }
     } catch {
       toast({ title: "Upload failed", description: "Please try again.", variant: "destructive" });
       setPreview(value ?? "");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleRemove = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const urlToDelete = preview;
+    setPreview("");
+    onChange("");
+    if (urlToDelete) {
+      deleteStorageObject(urlToDelete);
     }
   };
 
@@ -112,11 +148,7 @@ export function ImageUpload({ value, onChange, className, label, aspect = "video
         <button
           type="button"
           className="flex items-center gap-1 text-xs text-destructive hover:text-destructive/80 transition-colors"
-          onClick={(e) => {
-            e.stopPropagation();
-            setPreview("");
-            onChange("");
-          }}
+          onClick={handleRemove}
         >
           <X className="w-3 h-3" /> Remove image
         </button>

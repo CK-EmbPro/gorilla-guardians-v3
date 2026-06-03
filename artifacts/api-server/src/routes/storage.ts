@@ -128,4 +128,27 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * DELETE /storage/objects/*
+ *
+ * Delete an object entity from PRIVATE_OBJECT_DIR.
+ * Called when a user removes or replaces an uploaded image.
+ */
+router.delete("/storage/objects/*path", async (req: Request, res: Response) => {
+  try {
+    const raw = req.params.path;
+    const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
+    const objectPath = `/objects/${wildcardPath}`;
+    await objectStorageService.deleteObjectEntity(objectPath);
+    res.json({ success: true });
+  } catch (error) {
+    if (error instanceof ObjectNotFoundError) {
+      res.status(404).json({ error: "Object not found" });
+      return;
+    }
+    req.log.error({ err: error }, "Error deleting object");
+    res.status(500).json({ error: "Failed to delete object" });
+  }
+});
+
 export default router;
