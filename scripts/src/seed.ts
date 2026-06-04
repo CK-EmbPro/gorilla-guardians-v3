@@ -42,7 +42,11 @@ async function seed() {
 
   if (!artisanUser) { console.log("No artisan user found"); return; }
 
-  // ARTISANS
+  // ARTISANS — skip if already seeded
+  const existingArtisans = await db.select({ id: artisansTable.id }).from(artisansTable);
+  if (existingArtisans.length > 0) {
+    console.log(`Artisans: ${existingArtisans.length} already exist, skipping`);
+  } else {
   const artisanRows = await db.insert(artisansTable).values([
     {
       userId: artisanUser.id,
@@ -86,6 +90,7 @@ async function seed() {
     },
   ]).onConflictDoNothing().returning();
   console.log(`Artisans: ${artisanRows.length} inserted`);
+  } // end else (artisans not yet seeded)
 
   const artisans = await db.select().from(artisansTable);
   const cats = await db.select().from(categoriesTable);
@@ -411,7 +416,7 @@ The goal for 2026: 500 artisan families, 100 conservation ambassadors, and a dir
   const eventRows = await db.insert(eventsTable).values([
     {
       title: "Umuganura Harvest Festival",
-      slug: `umuganura-harvest-festival-${Date.now()}`,
+      slug: `umuganura-harvest-festival`,
       description: "Join us for Rwanda's traditional harvest festival celebration at Gorilla Guardians Village. Experience traditional dances, music, food, and a showcase of artisan work.",
       type: "festival",
       image: null,
@@ -423,7 +428,7 @@ The goal for 2026: 500 artisan families, 100 conservation ambassadors, and a dir
     },
     {
       title: "Virtual Artisan Showcase: Meet the Makers",
-      slug: `virtual-showcase-${Date.now()}`,
+      slug: `virtual-showcase`,
       description: "A live online event where you can meet Gorilla Guardians artisans, watch live demonstrations, ask questions, and place custom orders directly.",
       type: "exhibition",
       image: null,
@@ -435,7 +440,7 @@ The goal for 2026: 500 artisan families, 100 conservation ambassadors, and a dir
     },
     {
       title: "Imigongo Exhibition: Patterns of Rwanda",
-      slug: `imigongo-exhibition-${Date.now()}`,
+      slug: `imigongo-exhibition`,
       description: "A curated exhibition of contemporary Imigongo art by Gorilla Guardians artists. Opening night reception includes traditional music and food.",
       type: "exhibition",
       image: null,
