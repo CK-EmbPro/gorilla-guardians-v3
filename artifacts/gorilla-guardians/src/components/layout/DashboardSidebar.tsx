@@ -3,6 +3,7 @@ import {
   LayoutDashboard, Package, Users, BookOpen, ShoppingBag, Star, MessageSquare,
   Bell, FileText, Calendar, BarChart2, Heart, LogOut, ChevronLeft, ChevronRight,
   Megaphone, TreePine, Truck, Settings, User, DollarSign, PlusCircle, Globe, Mail,
+  ScanLine, UserCheck,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/staff/orders", label: "Orders", icon: ShoppingBag, roles: ["staff"] },
   { href: "/staff/products", label: "Products", icon: Package, roles: ["staff"] },
   { href: "/staff/messages", label: "Messages", icon: MessageSquare, roles: ["staff"] },
+  { href: "/admin/bookings", label: "Bookings", icon: Calendar, roles: ["staff"] },
+  { href: "/booking-verify", label: "Verify QR", icon: ScanLine, roles: ["staff"] },
   { href: "/admin/delivery", label: "Delivery", icon: Truck, roles: ["staff"] },
   { href: "/admin/notifications", label: "Notifications", icon: Bell, roles: ["staff"] },
   { href: "/admin/feedback", label: "Feedback", icon: Megaphone, roles: ["staff"] },
@@ -48,7 +51,9 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin/orders", label: "Orders", icon: ShoppingBag, roles: ["admin", "super_admin"] },
   { href: "/admin/delivery", label: "Delivery", icon: Truck, roles: ["admin", "super_admin"] },
   { href: "/admin/users", label: "Users", icon: User, roles: ["admin", "super_admin"] },
-  { href: "/admin/bookings", label: "Bookings", icon: Calendar, roles: ["admin", "super_admin", "staff"] },
+  { href: "/admin/bookings", label: "Bookings", icon: Calendar, roles: ["admin", "super_admin"] },
+  { href: "/admin/guides", label: "Tour Guides", icon: UserCheck, roles: ["admin", "super_admin"] },
+  { href: "/booking-verify", label: "Verify QR", icon: ScanLine, roles: ["admin", "super_admin"] },
   { href: "/admin/reviews", label: "Reviews", icon: Star, roles: ["admin", "super_admin"] },
   { href: "/admin/stories", label: "Stories", icon: BookOpen, roles: ["admin", "super_admin"] },
   { href: "/admin/events", label: "Events", icon: Calendar, roles: ["admin", "super_admin"] },
@@ -97,7 +102,7 @@ export default function DashboardSidebar() {
           const active = isActive(item.href);
           return (
             <Link
-              key={item.href}
+              key={`${item.href}-${item.label}`}
               href={item.href}
               data-testid={`link-nav-${item.label.toLowerCase().replace(/\s/g, "-")}`}
               className={cn(

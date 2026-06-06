@@ -32,6 +32,9 @@ import TrackPage from "@/pages/track";
 import PaymentSuccessPage from "@/pages/payment-success";
 import PaymentFailedPage from "@/pages/payment-failed";
 import BookingSuccessPage from "@/pages/booking-success";
+import BookingDetailPage from "@/pages/booking-detail";
+import BookingTicketPage from "@/pages/booking-ticket";
+import BookingVerifyPage from "@/pages/booking-verify";
 
 // Delivery / order detail pages
 import CustomerOrderDetail from "@/pages/customer/order-detail";
@@ -55,6 +58,7 @@ import AdminSettings from "@/pages/admin/settings";
 import AdminBookings from "@/pages/admin/bookings";
 import AdminHomepage from "@/pages/admin/homepage";
 import AdminEmailLogs from "@/pages/admin/email-logs";
+import AdminGuides from "@/pages/admin/guides";
 
 // Staff pages
 import StaffDashboard from "@/pages/staff/dashboard";
@@ -132,6 +136,9 @@ function Router() {
       <Route path="/payment-success" component={PaymentSuccessPage} />
       <Route path="/payment-failed" component={PaymentFailedPage} />
       <Route path="/booking-success" component={BookingSuccessPage} />
+      <Route path="/booking-verify" component={BookingVerifyPage} />
+      <Route path="/booking-ticket/:id" component={BookingTicketPage} />
+      <Route path="/bookings/:id" component={BookingDetailPage} />
 
       {/* Shared profile — any authenticated role */}
       <Route path="/profile">
@@ -246,6 +253,9 @@ function Router() {
       </Route>
       <Route path="/admin/bookings">
         {() => <ProtectedRoute component={AdminBookings} roles={["admin", "super_admin", "staff"]} />}
+      </Route>
+      <Route path="/admin/guides">
+        {() => <ProtectedRoute component={AdminGuides} roles={["admin", "super_admin"]} />}
       </Route>
       <Route path="/admin/homepage">
         {() => <ProtectedRoute component={AdminHomepage} roles={["admin", "super_admin"]} />}

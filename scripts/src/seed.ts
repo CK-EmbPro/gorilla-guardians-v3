@@ -250,6 +250,24 @@ async function seed() {
       featured: false,
       active: true,
     },
+    {
+      name: "Handwoven Sisal Prayer Mat",
+      slug: "sisal-prayer-mat-001",
+      description: "A large, intricately handwoven sisal prayer mat featuring traditional Rwandan geometric patterns in natural earth tones. Perfect for meditation, yoga, and ceremonial use.",
+      culturalSignificance: "Floor mats and woven textiles hold deep spiritual significance in Rwandan culture, often crafted by women's cooperatives and used in communal ceremonies.",
+      price: 75,
+      discountPrice: null,
+      stock: 10,
+      sku: "TXT-002",
+      categoryId: baskets.id,
+      artisanId: artisans[0].id,
+      images: [],
+      materials: "Natural sisal, organic plant dyes, recycled cotton border",
+      weight: 0.6,
+      dimensions: "120cm x 80cm",
+      featured: true,
+      active: true,
+    },
   ]).onConflictDoNothing().returning();
   console.log(`Products: ${productRows.length} inserted`);
 

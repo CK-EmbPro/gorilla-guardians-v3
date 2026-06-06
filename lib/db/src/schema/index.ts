@@ -5,6 +5,8 @@ export * from "./products";
 export * from "./experiences";
 export * from "./orders";
 export * from "./bookings";
+export * from "./guides";
+export * from "./bookingHistory";
 export * from "./reviews";
 export * from "./notifications";
 export * from "./messages";

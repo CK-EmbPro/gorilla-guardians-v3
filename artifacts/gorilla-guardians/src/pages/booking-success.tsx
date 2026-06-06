@@ -1,13 +1,16 @@
 import { useLocation, useSearch } from "wouter";
-import { CheckCircle2, Calendar, Users, Clock, ArrowRight } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { CheckCircle2, Calendar, Users, Clock, ArrowRight, Ticket, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 
 export default function BookingSuccessPage() {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const search = useSearch();
   const params = new URLSearchParams(search);
 
@@ -16,6 +19,28 @@ export default function BookingSuccessPage() {
   const participants = params.get("participants") ?? "1";
   const total = params.get("total");
   const bookingId = params.get("bookingId");
+
+  // Fetch booking to get the booking reference
+  const { data: booking } = useQuery<any>({
+    queryKey: ["booking-success", bookingId],
+    queryFn: async () => {
+      const res = await fetch(`/api/bookings/${bookingId}`, { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!bookingId,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const bookingRef = booking?.bookingReference ?? null;
+
+  const copyRef = () => {
+    if (bookingRef) {
+      navigator.clipboard.writeText(bookingRef).then(() => {
+        toast({ title: "Copied!", description: "Booking reference copied to clipboard." });
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -30,6 +55,22 @@ export default function BookingSuccessPage() {
             Your booking has been received. Our team will confirm it within 24 hours.
           </p>
         </div>
+
+        {/* Booking Reference — prominent */}
+        {bookingRef && (
+          <Card className="mb-5 border-2 border-primary/20 bg-primary/5">
+            <CardContent className="p-5 text-center">
+              <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2">Your Booking Reference</p>
+              <div className="flex items-center justify-center gap-3">
+                <code className="text-3xl font-mono font-bold text-primary tracking-wider">{bookingRef}</code>
+                <button onClick={copyRef} className="p-2 rounded-lg hover:bg-primary/10 transition-colors" title="Copy reference">
+                  <Copy className="w-5 h-5 text-primary" />
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">Keep this reference to track and manage your booking.</p>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="mb-6 border-green-200 bg-green-50/40">
           <CardContent className="p-6 space-y-4">
@@ -84,7 +125,7 @@ export default function BookingSuccessPage() {
               {[
                 { icon: "📧", text: "You'll receive an email confirmation shortly" },
                 { icon: "✅", text: "Our team reviews and approves your booking (within 24h)" },
-                { icon: "📞", text: "We'll contact you to finalize logistics and payment" },
+                { icon: "🎫", text: "Once approved, your digital ticket with QR code will be ready" },
                 { icon: "🦍", text: "Get ready for an unforgettable Rwandan experience!" },
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -99,12 +140,21 @@ export default function BookingSuccessPage() {
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Button
             className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
-            onClick={() => setLocation("/customer/bookings")}
+            onClick={() => setLocation(bookingId ? `/bookings/${bookingId}` : "/customer/bookings")}
             data-testid="button-view-bookings"
           >
             <Calendar className="w-4 h-4" />
-            View My Bookings
+            View Booking Details
           </Button>
+          {bookingId && (
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => setLocation(`/booking-ticket/${bookingId}`)}
+            >
+              <Ticket className="w-4 h-4" /> View Ticket
+            </Button>
+          )}
           <Button
             variant="outline"
             onClick={() => setLocation("/experiences")}

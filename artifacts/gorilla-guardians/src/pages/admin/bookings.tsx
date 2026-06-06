@@ -1,5 +1,10 @@
 import { useState, useMemo } from "react";
-import { Calendar, Search, Users, DollarSign, Clock, CheckCircle2, XCircle, ChevronDown, CalendarDays, List, Filter } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import {
+  Calendar, Search, Users, DollarSign, Clock, CheckCircle2, XCircle,
+  CalendarDays, List, Filter, UserCheck, Eye, Ticket, User,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,6 +19,7 @@ const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
   approved: "bg-blue-100 text-blue-800 border-blue-200",
   confirmed: "bg-green-100 text-green-800 border-green-200",
+  checked_in: "bg-purple-100 text-purple-800 border-purple-200",
   cancelled: "bg-red-100 text-red-800 border-red-200",
   completed: "bg-gray-100 text-gray-700 border-gray-200",
 };
@@ -30,6 +36,9 @@ const NEXT_STATUSES: Record<string, { label: string; value: string; color: strin
   confirmed: [
     { label: "Complete", value: "completed", color: "bg-gray-600 hover:bg-gray-700 text-white" },
     { label: "Cancel", value: "cancelled", color: "bg-red-100 hover:bg-red-200 text-red-700 border border-red-200" },
+  ],
+  checked_in: [
+    { label: "Complete", value: "completed", color: "bg-gray-600 hover:bg-gray-700 text-white" },
   ],
   completed: [],
   cancelled: [],
@@ -70,11 +79,9 @@ function MiniCalendar({ bookings }: { bookings: any[] }) {
   });
 
   const monthName = viewDate.toLocaleString("default", { month: "long", year: "numeric" });
-
   const days = [];
   for (let i = 0; i < firstDay; i++) days.push(null);
   for (let d = 1; d <= daysInMonth; d++) days.push(d);
-
   const pad = (n: number) => String(n).padStart(2, "0");
 
   return (
@@ -119,13 +126,25 @@ function MiniCalendar({ bookings }: { bookings: any[] }) {
 
 export default function AdminBookingsPage() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [view, setView] = useState<"list" | "calendar">("list");
+  const [checkingInId, setCheckingInId] = useState<number | null>(null);
+  const [assigningGuideId, setAssigningGuideId] = useState<number | null>(null);
 
   const { data: bookingsData, isLoading } = useListBookings({});
   const updateBooking = useUpdateBooking();
+
+  const { data: guides = [] } = useQuery<any[]>({
+    queryKey: ["guides"],
+    queryFn: async () => {
+      const res = await fetch("/api/guides", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
 
   const allBookings = Array.isArray(bookingsData) ? bookingsData : [];
 
@@ -137,7 +156,8 @@ export default function AdminBookingsPage() {
         b.user?.name?.toLowerCase().includes(q) ||
         b.user?.email?.toLowerCase().includes(q) ||
         b.experience?.title?.toLowerCase().includes(q) ||
-        String(b.id).includes(q);
+        String(b.id).includes(q) ||
+        (b.bookingReference ?? "").toLowerCase().includes(q);
       return matchStatus && matchSearch;
     });
   }, [allBookings, search, statusFilter]);
@@ -148,6 +168,7 @@ export default function AdminBookingsPage() {
       total: allBookings.length,
       pending: allBookings.filter((b: any) => b.status === "pending").length,
       confirmed: allBookings.filter((b: any) => b.status === "confirmed" || b.status === "approved").length,
+      checkedIn: allBookings.filter((b: any) => b.status === "checked_in").length,
       today: allBookings.filter((b: any) => b.date === today || (b.date && String(b.date).startsWith(today))).length,
       revenue: allBookings.filter((b: any) => b.status !== "cancelled").reduce((s: number, b: any) => s + (b.totalAmount ?? 0), 0),
     };
@@ -156,11 +177,53 @@ export default function AdminBookingsPage() {
   const handleStatus = (id: number, status: string) => {
     updateBooking.mutate({ id, data: { status } as any }, {
       onSuccess: () => {
-        toast({ title: `Booking ${status}` });
+        toast({ title: `Booking ${status.replace("_", " ")}` });
         queryClient.invalidateQueries({ queryKey: getListBookingsQueryKey() });
       },
       onError: () => toast({ title: "Failed to update", variant: "destructive" }),
     });
+  };
+
+  const handleCheckin = async (id: number) => {
+    setCheckingInId(id);
+    try {
+      const res = await fetch(`/api/bookings/${id}/checkin`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (res.status === 409) {
+        toast({ title: "Already checked in", description: `Checked in at ${new Date(data.checkinAt).toLocaleString()}` });
+      } else if (!res.ok) {
+        toast({ title: data.error ?? "Check-in failed", variant: "destructive" });
+      } else {
+        toast({ title: "✓ Visitor checked in successfully!" });
+        queryClient.invalidateQueries({ queryKey: getListBookingsQueryKey() });
+      }
+    } catch {
+      toast({ title: "Network error", variant: "destructive" });
+    } finally {
+      setCheckingInId(null);
+    }
+  };
+
+  const handleAssignGuide = async (bookingId: number, guideId: number | null) => {
+    setAssigningGuideId(bookingId);
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}/guide`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ guideId }),
+      });
+      if (!res.ok) throw new Error("Failed to assign guide");
+      toast({ title: guideId ? "Guide assigned" : "Guide unassigned" });
+      queryClient.invalidateQueries({ queryKey: getListBookingsQueryKey() });
+    } catch {
+      toast({ title: "Failed to assign guide", variant: "destructive" });
+    } finally {
+      setAssigningGuideId(null);
+    }
   };
 
   return (
@@ -174,6 +237,9 @@ export default function AdminBookingsPage() {
               <p className="text-sm text-muted-foreground">{allBookings.length} total bookings</p>
             </div>
             <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setLocation("/booking-verify")} className="gap-1.5">
+                <UserCheck className="w-3.5 h-3.5" /> Verify QR
+              </Button>
               <Button size="sm" variant={view === "list" ? "default" : "outline"} onClick={() => setView("list")} className="gap-1.5">
                 <List className="w-3.5 h-3.5" /> List
               </Button>
@@ -184,24 +250,21 @@ export default function AdminBookingsPage() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-            <StatCard icon={Calendar} label="Total Bookings" value={stats.total} color="bg-primary/10 text-primary" />
+          <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+            <StatCard icon={Calendar} label="Total" value={stats.total} color="bg-primary/10 text-primary" />
             <StatCard icon={Clock} label="Pending" value={stats.pending} sub="Awaiting action" color="bg-yellow-100 text-yellow-700" />
-            <StatCard icon={CheckCircle2} label="Confirmed" value={stats.confirmed} sub="Approved or confirmed" color="bg-green-100 text-green-700" />
+            <StatCard icon={CheckCircle2} label="Confirmed" value={stats.confirmed} sub="Approved/confirmed" color="bg-green-100 text-green-700" />
+            <StatCard icon={UserCheck} label="Checked In" value={stats.checkedIn} color="bg-purple-100 text-purple-700" />
             <StatCard icon={Users} label="Today" value={stats.today} sub="Bookings today" color="bg-blue-100 text-blue-700" />
             <StatCard icon={DollarSign} label="Revenue" value={`$${stats.revenue.toLocaleString()}`} sub="Excl. cancelled" color="bg-accent/20 text-accent-foreground" />
           </div>
 
           {view === "calendar" ? (
             <div className="grid lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-1">
-                <MiniCalendar bookings={allBookings} />
-              </div>
+              <div className="lg:col-span-1"><MiniCalendar bookings={allBookings} /></div>
               <div className="lg:col-span-2">
                 <Card className="border-border">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm">Upcoming Bookings</CardTitle>
-                  </CardHeader>
+                  <CardHeader className="pb-3"><CardTitle className="text-sm">Upcoming Bookings</CardTitle></CardHeader>
                   <CardContent className="px-4 pb-4 space-y-2 max-h-[500px] overflow-y-auto">
                     {allBookings
                       .filter((b: any) => b.date >= new Date().toISOString().slice(0, 10) && b.status !== "cancelled")
@@ -211,12 +274,14 @@ export default function AdminBookingsPage() {
                         <div key={b.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/40 text-sm">
                           <div>
                             <div className="font-medium">{b.experience?.title ?? `Booking #${b.id}`}</div>
-                            <div className="text-muted-foreground text-xs">{b.user?.name ?? "Guest"} · {b.date} · {b.participants} pax</div>
+                            <div className="text-muted-foreground text-xs">
+                              {b.user?.name ?? "Guest"} · {b.date} · {b.participants} pax
+                              {b.bookingReference && <> · <code className="font-mono text-primary">{b.bookingReference}</code></>}
+                            </div>
                           </div>
-                          <Badge className={`capitalize text-xs border ${STATUS_COLORS[b.status] ?? "bg-muted"}`}>{b.status}</Badge>
+                          <Badge className={`capitalize text-xs border ${STATUS_COLORS[b.status] ?? "bg-muted"}`}>{b.status.replace("_", " ")}</Badge>
                         </div>
-                      ))
-                    }
+                      ))}
                     {allBookings.filter((b: any) => b.date >= new Date().toISOString().slice(0, 10) && b.status !== "cancelled").length === 0 && (
                       <p className="text-muted-foreground text-sm text-center py-8">No upcoming bookings</p>
                     )}
@@ -226,11 +291,10 @@ export default function AdminBookingsPage() {
             </div>
           ) : (
             <>
-              {/* Filters */}
               <div className="flex flex-wrap gap-3 mb-5">
                 <div className="relative flex-1 min-w-48">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input placeholder="Search by customer, experience, or booking ID..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+                  <Input placeholder="Search by customer, experience, reference, or booking ID..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
                 </div>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="w-44">
@@ -242,6 +306,7 @@ export default function AdminBookingsPage() {
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="approved">Approved</SelectItem>
                     <SelectItem value="confirmed">Confirmed</SelectItem>
+                    <SelectItem value="checked_in">Checked In</SelectItem>
                     <SelectItem value="cancelled">Cancelled</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
                   </SelectContent>
@@ -249,7 +314,7 @@ export default function AdminBookingsPage() {
               </div>
 
               {isLoading ? (
-                <div className="space-y-3">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-20 bg-muted animate-pulse rounded-xl" />)}</div>
+                <div className="space-y-3">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-24 bg-muted animate-pulse rounded-xl" />)}</div>
               ) : filtered.length === 0 ? (
                 <div className="text-center py-20 text-muted-foreground">
                   <Calendar className="w-10 h-10 mx-auto mb-3 opacity-30" />
@@ -264,7 +329,14 @@ export default function AdminBookingsPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center flex-wrap gap-2 mb-1.5">
                               <span className="font-semibold text-sm">{b.experience?.title ?? `Booking #${b.id}`}</span>
-                              <Badge className={`capitalize text-xs border ${STATUS_COLORS[b.status] ?? "bg-muted"}`} data-testid={`badge-status-${b.id}`}>{b.status}</Badge>
+                              <Badge className={`capitalize text-xs border ${STATUS_COLORS[b.status] ?? "bg-muted"}`} data-testid={`badge-status-${b.id}`}>
+                                {b.status.replace("_", " ")}
+                              </Badge>
+                              {b.bookingReference && (
+                                <code className="text-xs font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                                  {b.bookingReference}
+                                </code>
+                              )}
                             </div>
                             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                               <span className="flex items-center gap-1"><Users className="w-3 h-3" />{b.user?.name ?? "Guest"} ({b.user?.email ?? ""})</span>
@@ -275,11 +347,61 @@ export default function AdminBookingsPage() {
                                 Payment: {b.paymentStatus}
                               </span>
                             </div>
+                            {b.guide && (
+                              <div className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1.5">
+                                <User className="w-3 h-3 text-primary" />
+                                <span className="font-medium">Guide:</span> {b.guide.name}
+                              </div>
+                            )}
+                            {b.checkinAt && (
+                              <div className="text-xs text-purple-700 mt-1">
+                                ✓ Checked in: {new Date(b.checkinAt).toLocaleString()}
+                              </div>
+                            )}
                             {b.specialRequests && (
                               <p className="text-xs text-muted-foreground mt-1.5 bg-muted/50 px-2 py-1 rounded">Note: {b.specialRequests}</p>
                             )}
+
+                            {/* Guide Assignment */}
+                            <div className="mt-2 flex items-center gap-2">
+                              <User className="w-3 h-3 text-muted-foreground shrink-0" />
+                              <select
+                                value={b.guideId ?? ""}
+                                onChange={e => handleAssignGuide(b.id, e.target.value ? Number(e.target.value) : null)}
+                                disabled={assigningGuideId === b.id}
+                                className="text-xs px-2 py-1 rounded border border-input bg-background text-muted-foreground"
+                              >
+                                <option value="">Assign guide...</option>
+                                {(guides as any[]).filter((g: any) => g.available || g.id === b.guideId).map((g: any) => (
+                                  <option key={g.id} value={g.id}>{g.name}</option>
+                                ))}
+                              </select>
+                            </div>
                           </div>
-                          <div className="flex gap-1.5 shrink-0 flex-wrap justify-end">
+                          <div className="flex gap-1.5 shrink-0 flex-wrap justify-end items-start">
+                            <button
+                              onClick={() => setLocation(`/bookings/${b.id}`)}
+                              className="text-xs px-2.5 py-1.5 rounded-md font-medium border border-border hover:bg-muted transition-colors"
+                              title="View details"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setLocation(`/booking-ticket/${b.id}`)}
+                              className="text-xs px-2.5 py-1.5 rounded-md font-medium border border-primary/30 text-primary hover:bg-primary/5 transition-colors"
+                              title="View ticket"
+                            >
+                              <Ticket className="w-3.5 h-3.5" />
+                            </button>
+                            {(b.status === "approved" || b.status === "confirmed") && !b.checkinAt && (
+                              <button
+                                onClick={() => handleCheckin(b.id)}
+                                disabled={checkingInId === b.id}
+                                className="text-xs px-2.5 py-1.5 rounded-md font-medium bg-purple-600 hover:bg-purple-700 text-white transition-colors flex items-center gap-1 disabled:opacity-60"
+                              >
+                                <UserCheck className="w-3 h-3" /> {checkingInId === b.id ? "..." : "Check In"}
+                              </button>
+                            )}
                             {(NEXT_STATUSES[b.status] ?? []).map(action => (
                               <button
                                 key={action.value}
