@@ -93,7 +93,7 @@ export default function ArtisansPage() {
                       <h3 className="font-semibold mb-1 group-hover:text-primary transition-colors" data-testid={`text-artisan-name-${artisan.id}`}>{artisan.name}</h3>
                       <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{artisan.biography}</p>
                       <div className="flex flex-wrap gap-1 mb-3">
-                        {artisan.skills?.slice(0, 2).map((skill: string) => (
+                        {Array.isArray(artisan.skills) && artisan.skills.slice(0, 2).map((skill: string) => (
                           <Badge key={skill} variant="secondary" className="text-xs capitalize">{skill}</Badge>
                         ))}
                       </div>

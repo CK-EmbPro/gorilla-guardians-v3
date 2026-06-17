@@ -273,7 +273,7 @@ export default function HomePage() {
                     <h3 className="font-semibold text-sm mb-1 group-hover:text-primary transition-colors">{artisan.name}</h3>
                     <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{artisan.biography}</p>
                     <div className="flex flex-wrap gap-1">
-                      {artisan.skills?.slice(0, 2).map((skill: string) => (
+                      {Array.isArray(artisan.skills) && artisan.skills.slice(0, 2).map((skill: string) => (
                         <Badge key={skill} variant="secondary" className="text-xs capitalize">{skill}</Badge>
                       ))}
                     </div>

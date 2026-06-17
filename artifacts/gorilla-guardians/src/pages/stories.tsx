@@ -93,7 +93,7 @@ export default function StoriesPage() {
                         <Calendar className="w-3.5 h-3.5" />
                         {new Date(story.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
                       </div>
-                      {story.tags?.length > 0 && (
+                      {Array.isArray(story.tags) && story.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-3">
                           {story.tags.slice(0, 3).map((tag: string) => (
                             <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>

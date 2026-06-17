@@ -17,13 +17,21 @@ services:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 8080
-      # Set these in the Render dashboard → Environment tab (never commit secrets):
-      # DATABASE_URL       — your PostgreSQL connection string
-      # SESSION_SECRET     — a long random string
-      # RESEND_API_KEY     — from resend.com
-      # RESEND_FROM_EMAIL  — e.g. "Gorilla Guardians <noreply@yourdomain.com>"
-      # STRIPE_SECRET_KEY  — from Stripe dashboard
-      # STRIPE_WEBHOOK_SECRET — from Stripe webhook endpoint (after adding /api/webhooks/stripe)
-      # FRONTEND_URL       — your Netlify URL, e.g. https://gorilla-guardians.netlify.app
-      # APP_URL            — same as FRONTEND_URL (used in email links and Stripe redirect URLs)
+        value: 8000
+      # Set the following in the Render dashboard → Environment tab (never commit secrets):
+      - key: DATABASE_URL
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: APP_URL
+        sync: false

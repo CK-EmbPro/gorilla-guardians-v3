@@ -137,7 +137,7 @@ export default function ExperiencesPage() {
                         <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {exp.duration}</span>
                         <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> Up to {exp.capacity}</span>
                       </div>
-                      {exp.includedItems?.length > 0 && (
+                      {Array.isArray(exp.includedItems) && exp.includedItems.length > 0 && (
                         <div className="flex flex-wrap gap-1 mb-4">
                           {exp.includedItems.slice(0, 2).map((item: string) => (
                             <Badge key={item} variant="outline" className="text-xs">{item}</Badge>
