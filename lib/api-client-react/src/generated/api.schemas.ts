@@ -13,6 +13,11 @@ export interface MessageResponse {
   message: string;
 }
 
+export interface CheckoutSessionResponse {
+  /** Stripe-hosted Checkout page URL to redirect the browser to. */
+  url: string;
+}
+
 export interface UploadUrlRequest {
   /**
      * Original file name.
@@ -64,6 +69,16 @@ export interface RegisterInput {
 
 export interface LoginInput {
   email: string;
+  password: string;
+}
+
+export interface ForgotPasswordInput {
+  email: string;
+}
+
+export interface ResetPasswordInput {
+  token: string;
+  /** @minLength 6 */
   password: string;
 }
 
@@ -297,15 +312,38 @@ export interface ExperienceInput {
   active?: boolean;
 }
 
-export interface ExperienceUpdate {
-  title?: string;
-  description?: string;
-  price?: number;
-  duration?: string;
-  capacity?: number;
+export interface ExperiencePackage {
+  id: number;
+  title: string;
+  slug: string;
+  description: string;
+  images: string[];
+  price: number;
+  discountPercent: number;
+  active: boolean;
+  experiences: Experience[];
+  createdAt: string;
+}
+
+export interface ExperiencePackageInput {
+  title: string;
+  description: string;
   images?: string[];
-  includedItems?: string[];
+  price: number;
+  discountPercent?: number;
   active?: boolean;
+  /**
+     * IDs of the existing experiences bundled into this package, in display order.
+     * @minItems 2
+     */
+  experienceIds: number[];
+}
+
+export interface PackageBookingInput {
+  date: string;
+  /** @minimum 1 */
+  participants: number;
+  specialRequests?: string;
 }
 
 export type BookingStatus = typeof BookingStatus[keyof typeof BookingStatus];
@@ -340,6 +378,22 @@ export interface Booking {
   specialRequests?: string | null;
   experience?: Experience;
   createdAt: string;
+}
+
+export interface PackageBookingResponse {
+  packageBookingRef: string;
+  bookings: Booking[];
+}
+
+export interface ExperienceUpdate {
+  title?: string;
+  description?: string;
+  price?: number;
+  duration?: string;
+  capacity?: number;
+  images?: string[];
+  includedItems?: string[];
+  active?: boolean;
 }
 
 export interface BookingInput {
@@ -636,6 +690,10 @@ export interface FeedbackInput {
      * @maximum 5
      */
   rating?: number;
+  /** Submitter name, for unauthenticated contact-form submissions only. */
+  guestName?: string;
+  /** Submitter email, for unauthenticated contact-form submissions only. */
+  guestEmail?: string;
 }
 
 export type FeedbackUpdateStatus = typeof FeedbackUpdateStatus[keyof typeof FeedbackUpdateStatus];
@@ -820,6 +878,29 @@ export interface TopExperience {
   averageRating?: number | null;
 }
 
+export interface MostViewedItem {
+  eventType: string;
+  entityId: number;
+  title: string;
+  viewCount: number;
+}
+
+export type AnalyticsEventInputEventType = typeof AnalyticsEventInputEventType[keyof typeof AnalyticsEventInputEventType];
+
+
+export const AnalyticsEventInputEventType = {
+  view_product: 'view_product',
+  view_experience: 'view_experience',
+  view_package: 'view_package',
+  add_to_cart: 'add_to_cart',
+} as const;
+
+export interface AnalyticsEventInput {
+  sessionId: string;
+  eventType: AnalyticsEventInputEventType;
+  entityId: number;
+}
+
 export interface Donation {
   id: number;
   userId: number;
@@ -931,6 +1012,20 @@ export const GetSalesAnalyticsPeriod = {
 export type GetTopProductsParams = {
 limit?: number;
 };
+
+export type GetMostViewedParams = {
+eventType?: GetMostViewedEventType;
+limit?: number;
+};
+
+export type GetMostViewedEventType = typeof GetMostViewedEventType[keyof typeof GetMostViewedEventType];
+
+
+export const GetMostViewedEventType = {
+  view_product: 'view_product',
+  view_experience: 'view_experience',
+  view_package: 'view_package',
+} as const;
 
 export type ListUsersParams = {
 role?: string;

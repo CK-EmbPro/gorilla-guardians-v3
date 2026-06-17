@@ -4,13 +4,18 @@ import { db, usersTable } from "@workspace/db";
 import {
   RegisterBody,
   LoginBody,
+  ForgotPasswordBody,
+  ResetPasswordBody,
   GetMeResponse,
   ListUsersQueryParams,
   GetUserParams,
   UpdateUserBody,
 } from "@workspace/api-zod";
-import { createHash } from "crypto";
+import { createHash, randomBytes } from "crypto";
 import { sendEmail, emailTemplates } from "../lib/emailService";
+
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
+const APP_URL = process.env.APP_URL ?? "https://gorilla-guardians.replit.app";
 
 const router: IRouter = Router();
 
@@ -80,6 +85,53 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   }
   (req.session as any).userId = user.id;
   res.json({ user: safeUser(user), token: `session-${user.id}` });
+});
+
+router.post("/auth/forgot-password", async (req, res): Promise<void> => {
+  const parsed = ForgotPasswordBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.email, parsed.data.email));
+  // Always respond the same way whether or not the account exists, so this endpoint can't be
+  // used to enumerate registered emails.
+  if (user) {
+    const token = randomBytes(32).toString("hex");
+    await db.update(usersTable).set({
+      resetToken: token,
+      resetTokenExpiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
+    }).where(eq(usersTable.id, user.id));
+
+    sendEmail({
+      to: user.email,
+      toName: user.name,
+      subject: "Reset Your Gorilla Guardians Village Password",
+      html: emailTemplates.passwordReset({ name: user.name, resetUrl: `${APP_URL}/reset-password?token=${token}` }),
+      template: "password_reset",
+      userId: user.id,
+    }).catch(err => console.error("[auth] password reset email error:", err));
+  }
+  res.json({ message: "If an account exists for that email, a reset link has been sent." });
+});
+
+router.post("/auth/reset-password", async (req, res): Promise<void> => {
+  const parsed = ResetPasswordBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.resetToken, parsed.data.token));
+  if (!user || !user.resetTokenExpiresAt || user.resetTokenExpiresAt.getTime() < Date.now()) {
+    res.status(400).json({ error: "Invalid or expired reset token" });
+    return;
+  }
+  await db.update(usersTable).set({
+    passwordHash: hashPassword(parsed.data.password),
+    resetToken: null,
+    resetTokenExpiresAt: null,
+  }).where(eq(usersTable.id, user.id));
+  res.json({ message: "Password updated successfully" });
 });
 
 router.post("/auth/logout", async (req, res): Promise<void> => {

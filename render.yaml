@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: gorilla-guardians-api
+    runtime: node
+    region: oregon
+    plan: free
+
+    # Build: install deps from monorepo root, then build just the api-server
+    buildCommand: "npm install -g pnpm && pnpm install --ignore-scripts && pnpm --filter @workspace/api-server run build"
+
+    # Start: run the compiled output
+    startCommand: "pnpm --filter @workspace/api-server run start"
+
+    healthCheckPath: /api/health
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8080
+      # Set these in the Render dashboard → Environment tab (never commit secrets):
+      # DATABASE_URL       — your PostgreSQL connection string
+      # SESSION_SECRET     — a long random string
+      # RESEND_API_KEY     — from resend.com
+      # RESEND_FROM_EMAIL  — e.g. "Gorilla Guardians <noreply@yourdomain.com>"
+      # STRIPE_SECRET_KEY  — from Stripe dashboard
+      # STRIPE_WEBHOOK_SECRET — from Stripe webhook endpoint (after adding /api/webhooks/stripe)
+      # FRONTEND_URL       — your Netlify URL, e.g. https://gorilla-guardians.netlify.app
+      # APP_URL            — same as FRONTEND_URL (used in email links and Stripe redirect URLs)

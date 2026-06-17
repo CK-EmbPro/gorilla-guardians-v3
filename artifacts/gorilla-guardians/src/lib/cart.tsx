@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { trackEvent } from "./trackEvent";
 
 const CART_KEY = "gg_cart_v1";
 
@@ -54,6 +55,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items]);
 
   const addToCart = (product: any, qty = 1) => {
+    trackEvent("add_to_cart", product.id);
     setItems(prev => {
       const idx = prev.findIndex(i => i.productId === product.id);
       if (idx >= 0) {

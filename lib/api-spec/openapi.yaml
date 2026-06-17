@@ -13,6 +13,7 @@ tags:
   - name: categories
   - name: artisans
   - name: experiences
+  - name: packages
   - name: bookings
   - name: orders
   - name: reviews
@@ -107,6 +108,44 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
+
+  /auth/forgot-password:
+    post:
+      operationId: forgotPassword
+      tags: [auth]
+      summary: Request a password reset email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordInput"
+      responses:
+        "200":
+          description: Reset email sent if the account exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/reset-password:
+    post:
+      operationId: resetPassword
+      tags: [auth]
+      summary: Reset password using a reset token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordInput"
+      responses:
+        "200":
+          description: Password updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
 
   # CATEGORIES
   /categories:
@@ -452,6 +491,106 @@ paths:
               schema:
                 $ref: "#/components/schemas/Experience"
 
+  # EXPERIENCE PACKAGES
+  /packages:
+    get:
+      operationId: listPackages
+      tags: [packages]
+      summary: List experience packages
+      responses:
+        "200":
+          description: Packages list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExperiencePackage"
+    post:
+      operationId: createPackage
+      tags: [packages]
+      summary: Create an experience package (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExperiencePackageInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperiencePackage"
+
+  /packages/{id}:
+    get:
+      operationId: getPackage
+      tags: [packages]
+      summary: Get package by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Package
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperiencePackage"
+    patch:
+      operationId: updatePackage
+      tags: [packages]
+      summary: Update package (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExperiencePackageInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperiencePackage"
+
+  /packages/{id}/book:
+    post:
+      operationId: bookPackage
+      tags: [packages]
+      summary: Book all experiences included in a package for one date
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PackageBookingInput"
+      responses:
+        "201":
+          description: Bookings created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PackageBookingResponse"
+
   # BOOKINGS
   /bookings:
     get:
@@ -544,6 +683,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/Booking"
 
+  /bookings/{id}/checkout-session:
+    post:
+      operationId: createBookingCheckoutSession
+      tags: [bookings]
+      summary: Create a Stripe Checkout session to pay for an approved booking
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Checkout session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutSessionResponse"
+
   # ORDERS
   /orders:
     get:
@@ -633,6 +791,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Order"
+
+  /orders/{id}/checkout-session:
+    post:
+      operationId: createOrderCheckoutSession
+      tags: [orders]
+      summary: Create a Stripe Checkout session to pay for this order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Checkout session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutSessionResponse"
 
   # DELIVERY TRACKING
   /delivery/{orderId}:
@@ -1332,6 +1509,50 @@ paths:
                 items:
                   $ref: "#/components/schemas/TopExperience"
 
+  /analytics/most-viewed:
+    get:
+      operationId: getMostViewed
+      tags: [analytics]
+      summary: Get most-viewed products/experiences/packages by tracked page views
+      parameters:
+        - name: eventType
+          in: query
+          schema:
+            type: string
+            enum: [view_product, view_experience, view_package]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Most-viewed entities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MostViewedItem"
+
+  /analytics/events:
+    post:
+      operationId: trackAnalyticsEvent
+      tags: [analytics]
+      summary: Record a lightweight view/interest event (no auth required)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyticsEventInput"
+      responses:
+        "201":
+          description: Recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
   # DONATIONS
   /donations:
     get:
@@ -1552,6 +1773,14 @@ components:
           type: string
       required: [message]
 
+    CheckoutSessionResponse:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          description: Stripe-hosted Checkout page URL to redirect the browser to.
+
     # STORAGE
     UploadUrlRequest:
       type: object
@@ -1615,6 +1844,24 @@ components:
           format: email
         password:
           type: string
+
+    ForgotPasswordInput:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+
+    ResetPasswordInput:
+      type: object
+      required: [token, password]
+      properties:
+        token:
+          type: string
+        password:
+          type: string
+          minLength: 6
 
     AuthResponse:
       type: object
@@ -2010,6 +2257,84 @@ components:
           type: string
         active:
           type: boolean
+
+    ExperiencePackage:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        images:
+          type: array
+          items:
+            type: string
+        price:
+          type: number
+        discountPercent:
+          type: number
+        active:
+          type: boolean
+        experiences:
+          type: array
+          items:
+            $ref: "#/components/schemas/Experience"
+        createdAt:
+          type: string
+      required: [id, title, slug, description, images, price, discountPercent, active, experiences, createdAt]
+
+    ExperiencePackageInput:
+      type: object
+      required: [title, description, price, experienceIds]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        images:
+          type: array
+          items:
+            type: string
+        price:
+          type: number
+        discountPercent:
+          type: number
+        active:
+          type: boolean
+        experienceIds:
+          type: array
+          items:
+            type: integer
+          minItems: 2
+          description: IDs of the existing experiences bundled into this package, in display order.
+
+    PackageBookingInput:
+      type: object
+      required: [date, participants]
+      properties:
+        date:
+          type: string
+          format: date
+        participants:
+          type: integer
+          minimum: 1
+        specialRequests:
+          type: string
+
+    PackageBookingResponse:
+      type: object
+      properties:
+        packageBookingRef:
+          type: string
+        bookings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Booking"
+      required: [packageBookingRef, bookings]
 
     ExperienceUpdate:
       type: object
@@ -2449,6 +2774,13 @@ components:
           type: integer
           minimum: 1
           maximum: 5
+        guestName:
+          type: string
+          description: Submitter name, for unauthenticated contact-form submissions only.
+        guestEmail:
+          type: string
+          format: email
+          description: Submitter email, for unauthenticated contact-form submissions only.
 
     FeedbackUpdate:
       type: object
@@ -2767,6 +3099,31 @@ components:
         averageRating:
           type: ["number", "null"]
       required: [experienceId, title, type, totalBookings, revenue]
+
+    MostViewedItem:
+      type: object
+      properties:
+        eventType:
+          type: string
+        entityId:
+          type: integer
+        title:
+          type: string
+        viewCount:
+          type: integer
+      required: [eventType, entityId, title, viewCount]
+
+    AnalyticsEventInput:
+      type: object
+      required: [sessionId, eventType, entityId]
+      properties:
+        sessionId:
+          type: string
+        eventType:
+          type: string
+          enum: [view_product, view_experience, view_package, add_to_cart]
+        entityId:
+          type: integer
 
     # DONATION
     Donation:

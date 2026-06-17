@@ -1,28 +1,23 @@
 import { useState } from "react";
-import { Download, TrendingUp, Users, ShoppingBag, DollarSign } from "lucide-react";
+import { Download, TrendingUp, ShoppingBag, DollarSign, Percent, Eye, Package as PackageIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import {
-  AreaChart, Area, BarChart, Bar, LineChart, Line,
+  AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, PieChart, Pie, Cell,
 } from "recharts";
 import DashboardSidebar from "@/components/layout/DashboardSidebar";
-import { useGetSalesAnalytics } from "@workspace/api-client-react";
+import { useGetSalesAnalytics, useGetDashboardStats, useGetTopProducts, useGetTopExperiences, useGetMostViewed } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 
 const COLORS = ["#2d6a4f", "#f4a261", "#6b4226", "#219ebc", "#e63946"];
 
-const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
-const revenueData = months.map((month, i) => ({
-  month,
-  revenue: [3200, 2900, 4100, 3800, 5200, 4700, 6100, 5600, 4800, 6800, 7200, 8400][i],
-  orders: [28, 24, 36, 31, 45, 40, 54, 49, 42, 58, 62, 73][i],
-  customers: [12, 10, 16, 14, 20, 18, 24, 22, 19, 26, 28, 33][i],
-}));
-
+// "Sales by Category" and "Top Countries" aren't part of the requested revenue/booking/conversion
+// metric set and there's no category- or country-level field on orders to compute them from real
+// data yet — left as illustrative placeholders, clearly separate from the real metrics above.
 const categoryData = [
   { name: "Baskets", value: 38 },
   { name: "Sculptures", value: 22 },
@@ -43,16 +38,28 @@ const countryData = [
 export default function AdminAnalyticsPage() {
   const { toast } = useToast();
   const [period, setPeriod] = useState("month");
-  const { data: salesData } = useGetSalesAnalytics({ period: period as any });
 
-  const sales = Array.isArray(salesData) && salesData.length > 0 ? salesData : revenueData;
-  const totalRevenue = revenueData.reduce((s, m) => s + m.revenue, 0);
-  const totalOrders = revenueData.reduce((s, m) => s + m.orders, 0);
-  const totalCustomers = revenueData.reduce((s, m) => s + m.customers, 0);
+  const { data: salesData, isLoading: salesLoading } = useGetSalesAnalytics({ period: period as any });
+  const { data: stats } = useGetDashboardStats();
+  const { data: topProductsData } = useGetTopProducts({ limit: 5 });
+  const { data: topExperiencesData } = useGetTopExperiences();
+  const { data: mostViewedExperiences } = useGetMostViewed({ eventType: "view_experience", limit: 5 });
+
+  const sales: any[] = Array.isArray(salesData) ? salesData : [];
+  const topProducts: any[] = Array.isArray(topProductsData) ? topProductsData : [];
+  const topExperiences: any[] = Array.isArray(topExperiencesData) ? topExperiencesData : [];
+  const mostViewed: any[] = Array.isArray(mostViewedExperiences) ? mostViewedExperiences : [];
 
   const handleExport = (format: string) => {
     toast({ title: `Exporting as ${format}…`, description: "Your file will be ready shortly." });
   };
+
+  const kpis = stats ? [
+    { icon: DollarSign, label: "Total Revenue", value: `$${stats.totalRevenue.toLocaleString()}`, color: "bg-primary/10" },
+    { icon: ShoppingBag, label: "Total Orders", value: stats.totalOrders.toLocaleString(), color: "bg-secondary/10" },
+    { icon: Percent, label: "Conversion Rate", value: `${stats.conversionRate}%`, color: "bg-accent/10" },
+    { icon: TrendingUp, label: "New Customers (This Month)", value: stats.newCustomersThisMonth.toLocaleString(), color: "bg-blue-50" },
+  ] : [];
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -62,7 +69,7 @@ export default function AdminAnalyticsPage() {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="font-serif text-2xl font-bold">Analytics</h1>
-              <p className="text-sm text-muted-foreground mt-1">Sales trends, revenue, and customer growth.</p>
+              <p className="text-sm text-muted-foreground mt-1">Real revenue, booking, and conversion data — computed from live orders, bookings, and tracked views.</p>
             </div>
             <div className="flex items-center gap-2">
               <Select value={period} onValueChange={setPeriod}>
@@ -82,22 +89,22 @@ export default function AdminAnalyticsPage() {
             </div>
           </div>
 
-          {/* KPI row */}
+          {/* KPI row — sourced from /analytics/dashboard, all real */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {[
-              { icon: DollarSign, label: "Total Revenue", value: `$${totalRevenue.toLocaleString()}`, change: "+18%", color: "bg-primary/10" },
-              { icon: ShoppingBag, label: "Total Orders", value: totalOrders.toString(), change: "+12%", color: "bg-secondary/10" },
-              { icon: Users, label: "New Customers", value: totalCustomers.toString(), change: "+24%", color: "bg-accent/10" },
-              { icon: TrendingUp, label: "Avg Order Value", value: `$${Math.round(totalRevenue / totalOrders)}`, change: "+6%", color: "bg-blue-50" },
-            ].map(({ icon: Icon, label, value, change, color }) => (
-              <Card key={label} className="border-border">
+            {(kpis.length > 0 ? kpis : Array.from({ length: 4 })).map((kpi: any, i) => (
+              <Card key={kpi?.label ?? i} className="border-border">
                 <CardContent className="p-5">
-                  <div className={`w-10 h-10 rounded-lg ${color} flex items-center justify-center mb-3`}>
-                    <Icon className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className="text-2xl font-serif font-bold mb-0.5">{value}</div>
-                  <div className="text-sm text-muted-foreground">{label}</div>
-                  <div className="text-xs text-green-600 font-medium mt-1">{change} vs last period</div>
+                  {kpi ? (
+                    <>
+                      <div className={`w-10 h-10 rounded-lg ${kpi.color} flex items-center justify-center mb-3`}>
+                        <kpi.icon className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="text-2xl font-serif font-bold mb-0.5">{kpi.value}</div>
+                      <div className="text-sm text-muted-foreground">{kpi.label}</div>
+                    </>
+                  ) : (
+                    <div className="h-16 bg-muted rounded animate-pulse" />
+                  )}
                 </CardContent>
               </Card>
             ))}
@@ -105,36 +112,40 @@ export default function AdminAnalyticsPage() {
 
           <Tabs defaultValue="revenue" className="space-y-6">
             <TabsList>
-              <TabsTrigger value="revenue">Revenue</TabsTrigger>
-              <TabsTrigger value="orders">Orders</TabsTrigger>
-              <TabsTrigger value="customers">Customers</TabsTrigger>
+              <TabsTrigger value="revenue">Revenue Trend</TabsTrigger>
+              <TabsTrigger value="bookings">Booking Trend</TabsTrigger>
+              <TabsTrigger value="performance">Top Performers</TabsTrigger>
               <TabsTrigger value="geography">Geography</TabsTrigger>
             </TabsList>
 
             <TabsContent value="revenue">
               <div className="grid lg:grid-cols-3 gap-6">
                 <Card className="lg:col-span-2 border-border">
-                  <CardHeader><CardTitle className="text-base">Monthly Revenue (2026)</CardTitle></CardHeader>
+                  <CardHeader><CardTitle className="text-base">Revenue Over Time</CardTitle></CardHeader>
                   <CardContent>
-                    <ResponsiveContainer width="100%" height={280}>
-                      <AreaChart data={revenueData}>
-                        <defs>
-                          <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="hsl(152 42% 28%)" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="hsl(152 42% 28%)" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(42 20% 90%)" />
-                        <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                        <YAxis tick={{ fontSize: 11 }} />
-                        <Tooltip formatter={(v: number) => [`$${v.toLocaleString()}`, "Revenue"]} />
-                        <Area type="monotone" dataKey="revenue" stroke="hsl(152 42% 28%)" fill="url(#revGrad)" strokeWidth={2} />
-                      </AreaChart>
-                    </ResponsiveContainer>
+                    {salesLoading ? (
+                      <div className="h-[280px] bg-muted rounded animate-pulse" />
+                    ) : (
+                      <ResponsiveContainer width="100%" height={280}>
+                        <AreaChart data={sales}>
+                          <defs>
+                            <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="hsl(152 42% 28%)" stopOpacity={0.3} />
+                              <stop offset="95%" stopColor="hsl(152 42% 28%)" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(42 20% 90%)" />
+                          <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                          <YAxis tick={{ fontSize: 11 }} />
+                          <Tooltip formatter={(v: number) => [`$${v.toLocaleString()}`, "Revenue"]} />
+                          <Area type="monotone" dataKey="revenue" stroke="hsl(152 42% 28%)" fill="url(#revGrad)" strokeWidth={2} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    )}
                   </CardContent>
                 </Card>
                 <Card className="border-border">
-                  <CardHeader><CardTitle className="text-base">Sales by Category</CardTitle></CardHeader>
+                  <CardHeader><CardTitle className="text-base">Sales by Category</CardTitle><p className="text-xs text-muted-foreground">Illustrative — not yet tracked per category</p></CardHeader>
                   <CardContent>
                     <ResponsiveContainer width="100%" height={280}>
                       <PieChart>
@@ -150,43 +161,91 @@ export default function AdminAnalyticsPage() {
               </div>
             </TabsContent>
 
-            <TabsContent value="orders">
-              <Card className="border-border">
-                <CardHeader><CardTitle className="text-base">Monthly Orders (2026)</CardTitle></CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={revenueData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(42 20% 90%)" />
-                      <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                      <YAxis tick={{ fontSize: 11 }} />
-                      <Tooltip />
-                      <Bar dataKey="orders" fill="hsl(43 90% 50%)" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
+            <TabsContent value="bookings">
+              <div className="grid lg:grid-cols-2 gap-6">
+                <Card className="border-border">
+                  <CardHeader><CardTitle className="text-base">Orders Over Time</CardTitle></CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={sales}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(42 20% 90%)" />
+                        <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} />
+                        <Tooltip />
+                        <Bar dataKey="orders" fill="hsl(43 90% 50%)" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+                <Card className="border-border">
+                  <CardHeader><CardTitle className="text-base">Experience Bookings Over Time</CardTitle></CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={sales}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(42 20% 90%)" />
+                        <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} />
+                        <Tooltip />
+                        <Bar dataKey="bookings" fill="hsl(152 42% 28%)" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
 
-            <TabsContent value="customers">
-              <Card className="border-border">
-                <CardHeader><CardTitle className="text-base">Customer Growth (2026)</CardTitle></CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={revenueData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(42 20% 90%)" />
-                      <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                      <YAxis tick={{ fontSize: 11 }} />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="customers" stroke="hsl(152 42% 28%)" strokeWidth={2} dot={{ fill: "hsl(152 42% 28%)", r: 4 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
+            <TabsContent value="performance">
+              <div className="grid lg:grid-cols-3 gap-6">
+                <Card className="border-border">
+                  <CardHeader><CardTitle className="text-base flex items-center gap-2"><PackageIcon className="w-4 h-4 text-primary" /> Most Purchased Products</CardTitle></CardHeader>
+                  <CardContent className="space-y-3">
+                    {topProducts.length === 0 ? <p className="text-sm text-muted-foreground">No sales yet.</p> : topProducts.map((p, i) => (
+                      <div key={p.productId} className="flex items-center gap-3">
+                        <span className="w-5 text-sm font-medium text-muted-foreground">{i + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{p.name}</div>
+                          <div className="text-xs text-muted-foreground">{p.totalSold} sold · {p.artisanName}</div>
+                        </div>
+                        <Badge variant="outline" className="text-xs">${p.revenue.toFixed(0)}</Badge>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+                <Card className="border-border">
+                  <CardHeader><CardTitle className="text-base flex items-center gap-2"><TrendingUp className="w-4 h-4 text-primary" /> Top Booked Experiences</CardTitle></CardHeader>
+                  <CardContent className="space-y-3">
+                    {topExperiences.length === 0 ? <p className="text-sm text-muted-foreground">No bookings yet.</p> : topExperiences.map((e, i) => (
+                      <div key={e.experienceId} className="flex items-center gap-3">
+                        <span className="w-5 text-sm font-medium text-muted-foreground">{i + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{e.title}</div>
+                          <div className="text-xs text-muted-foreground">{e.totalBookings} bookings{e.averageRating ? ` · ${e.averageRating}★` : ""}</div>
+                        </div>
+                        <Badge variant="outline" className="text-xs">${e.revenue.toFixed(0)}</Badge>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+                <Card className="border-border">
+                  <CardHeader><CardTitle className="text-base flex items-center gap-2"><Eye className="w-4 h-4 text-primary" /> Most Viewed Experiences</CardTitle></CardHeader>
+                  <CardContent className="space-y-3">
+                    {mostViewed.length === 0 ? <p className="text-sm text-muted-foreground">No views tracked yet.</p> : mostViewed.map((v, i) => (
+                      <div key={`${v.eventType}-${v.entityId}`} className="flex items-center gap-3">
+                        <span className="w-5 text-sm font-medium text-muted-foreground">{i + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{v.title}</div>
+                        </div>
+                        <Badge variant="outline" className="text-xs">{v.viewCount} views</Badge>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
 
             <TabsContent value="geography">
               <Card className="border-border">
-                <CardHeader><CardTitle className="text-base">Top Countries by Revenue</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-base">Top Countries by Revenue</CardTitle><p className="text-xs text-muted-foreground">Illustrative — orders don't capture a structured country field yet</p></CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     {countryData.map((c, i) => (

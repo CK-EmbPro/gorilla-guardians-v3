@@ -82,6 +82,35 @@ export const GetMeResponse = zod.object({
 
 
 /**
+ * @summary Request a password reset email
+ */
+export const ForgotPasswordBody = zod.object({
+  "email": zod.string().email()
+})
+
+export const ForgotPasswordResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Reset password using a reset token
+ */
+export const resetPasswordBodyPasswordMin = 6;
+
+
+
+export const ResetPasswordBody = zod.object({
+  "token": zod.string(),
+  "password": zod.string().min(resetPasswordBodyPasswordMin)
+})
+
+export const ResetPasswordResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
  * @summary List product categories
  */
 export const ListCategoriesResponseItem = zod.object({
@@ -614,6 +643,172 @@ export const UpdateExperienceResponse = zod.object({
 
 
 /**
+ * @summary List experience packages
+ */
+export const ListPackagesResponseItem = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "slug": zod.string(),
+  "description": zod.string(),
+  "images": zod.array(zod.string()),
+  "price": zod.number(),
+  "discountPercent": zod.number(),
+  "active": zod.boolean(),
+  "experiences": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "slug": zod.string(),
+  "description": zod.string(),
+  "type": zod.enum(['guided_tour', 'homestay', 'workshop', 'dance_lesson', 'cooking_class']),
+  "images": zod.array(zod.string()),
+  "videoUrl": zod.string().nullish(),
+  "price": zod.number(),
+  "duration": zod.string(),
+  "capacity": zod.number(),
+  "difficultyLevel": zod.string().nullish(),
+  "includedItems": zod.array(zod.string()),
+  "meetingPoint": zod.string().nullish(),
+  "cancellationPolicy": zod.string().nullish(),
+  "active": zod.boolean(),
+  "averageRating": zod.number().nullish(),
+  "reviewCount": zod.number(),
+  "createdAt": zod.coerce.date()
+})),
+  "createdAt": zod.string()
+})
+export const ListPackagesResponse = zod.array(ListPackagesResponseItem)
+
+
+/**
+ * @summary Create an experience package (admin)
+ */
+export const createPackageBodyExperienceIdsMin = 2;
+
+
+
+export const CreatePackageBody = zod.object({
+  "title": zod.string(),
+  "description": zod.string(),
+  "images": zod.array(zod.string()).optional(),
+  "price": zod.number(),
+  "discountPercent": zod.number().optional(),
+  "active": zod.boolean().optional(),
+  "experienceIds": zod.array(zod.number()).min(createPackageBodyExperienceIdsMin).describe('IDs of the existing experiences bundled into this package, in display order.')
+})
+
+
+/**
+ * @summary Get package by id
+ */
+export const GetPackageParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetPackageResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "slug": zod.string(),
+  "description": zod.string(),
+  "images": zod.array(zod.string()),
+  "price": zod.number(),
+  "discountPercent": zod.number(),
+  "active": zod.boolean(),
+  "experiences": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "slug": zod.string(),
+  "description": zod.string(),
+  "type": zod.enum(['guided_tour', 'homestay', 'workshop', 'dance_lesson', 'cooking_class']),
+  "images": zod.array(zod.string()),
+  "videoUrl": zod.string().nullish(),
+  "price": zod.number(),
+  "duration": zod.string(),
+  "capacity": zod.number(),
+  "difficultyLevel": zod.string().nullish(),
+  "includedItems": zod.array(zod.string()),
+  "meetingPoint": zod.string().nullish(),
+  "cancellationPolicy": zod.string().nullish(),
+  "active": zod.boolean(),
+  "averageRating": zod.number().nullish(),
+  "reviewCount": zod.number(),
+  "createdAt": zod.coerce.date()
+})),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Update package (admin)
+ */
+export const UpdatePackageParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const updatePackageBodyExperienceIdsMin = 2;
+
+
+
+export const UpdatePackageBody = zod.object({
+  "title": zod.string(),
+  "description": zod.string(),
+  "images": zod.array(zod.string()).optional(),
+  "price": zod.number(),
+  "discountPercent": zod.number().optional(),
+  "active": zod.boolean().optional(),
+  "experienceIds": zod.array(zod.number()).min(updatePackageBodyExperienceIdsMin).describe('IDs of the existing experiences bundled into this package, in display order.')
+})
+
+export const UpdatePackageResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "slug": zod.string(),
+  "description": zod.string(),
+  "images": zod.array(zod.string()),
+  "price": zod.number(),
+  "discountPercent": zod.number(),
+  "active": zod.boolean(),
+  "experiences": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "slug": zod.string(),
+  "description": zod.string(),
+  "type": zod.enum(['guided_tour', 'homestay', 'workshop', 'dance_lesson', 'cooking_class']),
+  "images": zod.array(zod.string()),
+  "videoUrl": zod.string().nullish(),
+  "price": zod.number(),
+  "duration": zod.string(),
+  "capacity": zod.number(),
+  "difficultyLevel": zod.string().nullish(),
+  "includedItems": zod.array(zod.string()),
+  "meetingPoint": zod.string().nullish(),
+  "cancellationPolicy": zod.string().nullish(),
+  "active": zod.boolean(),
+  "averageRating": zod.number().nullish(),
+  "reviewCount": zod.number(),
+  "createdAt": zod.coerce.date()
+})),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Book all experiences included in a package for one date
+ */
+export const BookPackageParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const BookPackageBody = zod.object({
+  "date": zod.coerce.date(),
+  "participants": zod.number().min(1),
+  "specialRequests": zod.string().optional()
+})
+
+
+/**
  * @summary List bookings
  */
 export const ListBookingsQueryParams = zod.object({
@@ -758,6 +953,14 @@ export const UpdateBookingResponse = zod.object({
 
 
 /**
+ * @summary Create a Stripe Checkout session to pay for an approved booking
+ */
+export const CreateBookingCheckoutSessionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
  * @summary List orders
  */
 export const ListOrdersQueryParams = zod.object({
@@ -887,6 +1090,14 @@ export const UpdateOrderResponse = zod.object({
   "trackingNumber": zod.string().nullish(),
   "notes": zod.string().nullish(),
   "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Create a Stripe Checkout session to pay for this order
+ */
+export const CreateOrderCheckoutSessionParams = zod.object({
+  "id": zod.coerce.number()
 })
 
 
@@ -1195,7 +1406,9 @@ export const SubmitFeedbackBody = zod.object({
   "type": zod.enum(['suggestion', 'issue', 'general']),
   "subject": zod.string(),
   "message": zod.string(),
-  "rating": zod.number().min(1).max(submitFeedbackBodyRatingMax).optional()
+  "rating": zod.number().min(1).max(submitFeedbackBodyRatingMax).optional(),
+  "guestName": zod.string().optional().describe('Submitter name, for unauthenticated contact-form submissions only.'),
+  "guestEmail": zod.string().email().optional().describe('Submitter email, for unauthenticated contact-form submissions only.')
 })
 
 
@@ -1817,6 +2030,33 @@ export const GetTopExperiencesResponseItem = zod.object({
   "averageRating": zod.number().nullish()
 })
 export const GetTopExperiencesResponse = zod.array(GetTopExperiencesResponseItem)
+
+
+/**
+ * @summary Get most-viewed products/experiences/packages by tracked page views
+ */
+export const GetMostViewedQueryParams = zod.object({
+  "eventType": zod.enum(['view_product', 'view_experience', 'view_package']).optional(),
+  "limit": zod.coerce.number().optional()
+})
+
+export const GetMostViewedResponseItem = zod.object({
+  "eventType": zod.string(),
+  "entityId": zod.number(),
+  "title": zod.string(),
+  "viewCount": zod.number()
+})
+export const GetMostViewedResponse = zod.array(GetMostViewedResponseItem)
+
+
+/**
+ * @summary Record a lightweight view/interest event (no auth required)
+ */
+export const TrackAnalyticsEventBody = zod.object({
+  "sessionId": zod.string(),
+  "eventType": zod.enum(['view_product', 'view_experience', 'view_package', 'add_to_cart']),
+  "entityId": zod.number()
+})
 
 
 /**

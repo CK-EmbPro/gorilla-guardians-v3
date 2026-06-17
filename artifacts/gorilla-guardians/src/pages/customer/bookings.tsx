@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Calendar, Clock, Users, DollarSign, ChevronDown, ChevronUp, RefreshCw, XCircle, Ticket, Eye, Copy } from "lucide-react";
+import { Calendar, Clock, Users, DollarSign, ChevronDown, ChevronUp, RefreshCw, XCircle, Ticket, Eye, Copy, CreditCard } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useListBookings, useUpdateBooking, getListBookingsQueryKey } from "@workspace/api-client-react";
+import { useListBookings, useUpdateBooking, useCreateBookingCheckoutSession, getListBookingsQueryKey } from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import DashboardSidebar from "@/components/layout/DashboardSidebar";
 import { useAuth } from "@/lib/auth";
@@ -94,7 +94,16 @@ function BookingCard({ b, onCancel, cancelling }: { b: any; onCancel: (id: numbe
   const canCancel = ["pending", "approved"].includes(b.status);
   const canReschedule = ["pending", "approved", "confirmed"].includes(b.status);
   const showTicket = ["approved", "confirmed", "checked_in"].includes(b.status);
+  const canPay = ["approved", "confirmed"].includes(b.status) && b.paymentStatus !== "paid";
   const isPast = b.date < new Date().toISOString().slice(0, 10);
+  const createCheckoutSession = useCreateBookingCheckoutSession();
+
+  const handlePayNow = () => {
+    createCheckoutSession.mutate({ id: b.id }, {
+      onSuccess: (session: any) => { window.location.href = session.url; },
+      onError: () => toast({ title: "Could not start payment", description: "Please try again in a moment.", variant: "destructive" }),
+    });
+  };
 
   const copyRef = () => {
     if (b.bookingReference) {
@@ -195,6 +204,16 @@ function BookingCard({ b, onCancel, cancelling }: { b: any; onCancel: (id: numbe
                   className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md border border-primary/30 text-primary hover:bg-primary/5 transition-colors font-medium"
                 >
                   <Ticket className="w-3.5 h-3.5" /> Ticket
+                </button>
+              )}
+              {canPay && (
+                <button
+                  onClick={handlePayNow}
+                  disabled={createCheckoutSession.isPending}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium disabled:opacity-60"
+                  data-testid={`button-pay-now-${b.id}`}
+                >
+                  <CreditCard className="w-3.5 h-3.5" /> {createCheckoutSession.isPending ? "Redirecting..." : "Pay Now"}
                 </button>
               )}
               {canReschedule && !isPast && (

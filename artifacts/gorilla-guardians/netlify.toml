@@ -1,0 +1,20 @@
+[build]
+  # Run from the monorepo root so pnpm workspace packages resolve correctly.
+  # In Netlify UI: set "Base directory" to the repo root (leave blank), and
+  # "Build command" + "Publish directory" as below.
+  command   = "pnpm --filter @workspace/gorilla-guardians run build"
+  publish   = "artifacts/gorilla-guardians/dist/public"
+
+[build.environment]
+  NODE_VERSION = "20"
+  # Vite needs BASE_PATH for the asset base URL. "/" is correct for Netlify.
+  BASE_PATH = "/"
+  # PORT is only used by the dev server — set a dummy value so the import
+  # doesn't throw during build (vite.config.ts now handles the missing case).
+
+# Redirect all paths to index.html so client-side routing (wouter) works on
+# direct loads and browser refreshes.
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200

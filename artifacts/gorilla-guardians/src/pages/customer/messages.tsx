@@ -78,7 +78,7 @@ export default function CustomerMessagesPage() {
     const sent = text;
     setText("");
     sendMessage.mutate(
-      { data: { conversationId: selectedConv!, content: sent }, params: { userId: user?.id } as any },
+      { data: { conversationId: selectedConv!, content: sent } },
       {
         onSuccess: (newMsg: any) => {
           setLocalMessages(prev => prev.filter(m => m.id !== optimistic.id));

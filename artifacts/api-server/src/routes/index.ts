@@ -4,6 +4,7 @@ import authRouter from "./auth";
 import productsRouter from "./products";
 import artisansRouter from "./artisans";
 import experiencesRouter from "./experiences";
+import packagesRouter from "./packages";
 import ordersRouter from "./orders";
 import bookingsRouter from "./bookings";
 import guidesRouter from "./guides";
@@ -17,6 +18,7 @@ import streamRouter from "./stream";
 import deliveryRouter from "./delivery";
 import homepageRouter from "./homepage";
 import emailsRouter from "./emails";
+import webhooksRouter from "./webhooks";
 
 const router: IRouter = Router();
 
@@ -28,6 +30,7 @@ router.use(streamRouter);
 router.use(productsRouter);
 router.use(artisansRouter);
 router.use(experiencesRouter);
+router.use(packagesRouter);
 router.use(ordersRouter);
 router.use(bookingsRouter);
 router.use(guidesRouter);
@@ -37,6 +40,7 @@ router.use(messagesRouter);
 router.use(deliveryRouter);
 router.use(homepageRouter);
 router.use(emailsRouter);
+router.use(webhooksRouter);
 router.use(miscRouter);
 
 export default router;

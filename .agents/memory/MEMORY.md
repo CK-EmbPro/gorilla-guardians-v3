@@ -1,3 +1,4 @@
+- [No Assumptions Policy](no-assumptions-policy.md) — Never assume unclear/missing requirements; always ask the user for clarification before making a change.
 - [Object Storage Setup](object-storage-setup.md) — Replit App Storage (GCS-backed) used for image persistence; ImageUpload component uses presigned URL flow.
 - [Workflow Config](workflow-config.md) — Both services need PORT and BASE_PATH inline in workflow commands; workflows named "API Server" and "Gorilla Guardians Web".
 - [Gorilla Guardians DB setup](gorilla-guardians-db.md) — DB schema push + seed required before any API works; stale vite process on port 24775 blocks workflow restart.

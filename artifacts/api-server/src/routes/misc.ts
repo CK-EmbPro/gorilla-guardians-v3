@@ -1,10 +1,12 @@
 import { Router, type IRouter } from "express";
-import { eq, and, gte, desc, sql } from "drizzle-orm";
+import { eq, and, gte, desc, ne, sql, inArray } from "drizzle-orm";
 import {
   db, feedbackTable, eventsTable, storiesTable, categoriesTable,
   wishlistTable, cartItemsTable, productsTable, donationsTable, artisansTable,
   deliveryTrackingTable, ordersTable, orderItemsTable, usersTable, bookingsTable,
+  experiencesTable, reviewsTable, analyticsEventsTable, experiencePackagesTable,
 } from "@workspace/db";
+import { z } from "zod";
 import {
   ListFeedbackQueryParams, SubmitFeedbackBody, UpdateFeedbackBody, UpdateFeedbackParams,
   ListEventsQueryParams, CreateEventBody, UpdateEventBody, UpdateEventParams,
@@ -12,6 +14,13 @@ import {
   AddToWishlistBody, AddToCartBody, UpdateCartItemBody, CreateDonationBody,
   UpdateDeliveryTrackingBody,
 } from "@workspace/api-zod";
+
+const AnalyticsEventSchema = z.object({
+  sessionId: z.string(),
+  eventType: z.enum(["view_product", "view_experience", "view_package", "add_to_cart"]),
+  entityId: z.number().int(),
+});
+import { sendEmail, emailTemplates } from "../lib/emailService";
 
 const router: IRouter = Router();
 
@@ -43,6 +52,31 @@ router.post("/feedback", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const userId = (req.session as any).userId ?? null;
   const [feedback] = await db.insert(feedbackTable).values({ ...parsed.data, userId, status: "open" } as any).returning();
+
+  // Resolve a display name/email for the notification email: prefer the logged-in user's
+  // account details, fall back to the guest fields collected on the public contact form.
+  let fromName = feedback.guestName ?? "Anonymous";
+  let fromEmail = feedback.guestEmail ?? null;
+  if (userId) {
+    const [user] = await db.select({ name: usersTable.name, email: usersTable.email }).from(usersTable).where(eq(usersTable.id, userId));
+    if (user) { fromName = user.name; fromEmail = user.email; }
+  }
+
+  if (fromEmail) {
+    const admins = await db.select({ email: usersTable.email, name: usersTable.name })
+      .from(usersTable)
+      .where(inArray(usersTable.role, ["admin", "super_admin"]));
+    for (const admin of admins) {
+      sendEmail({
+        to: admin.email,
+        toName: admin.name,
+        subject: `New Contact Form Message: ${feedback.subject}`,
+        html: emailTemplates.contactFormReceived({ name: fromName, email: fromEmail, subject: feedback.subject, message: feedback.message }),
+        template: "contact_form_received",
+      }).catch(err => console.error("[feedback] email error:", err));
+    }
+  }
+
   res.status(201).json({ ...feedback, userId: feedback.userId ?? null, rating: feedback.rating ?? null, adminResponse: null, createdAt: feedback.createdAt.toISOString() });
 });
 
@@ -290,8 +324,12 @@ router.patch("/delivery/:orderId", async (req, res): Promise<void> => {
   res.json({ ...tracking, trackingNumber: tracking.trackingNumber ?? null, carrier: tracking.carrier ?? null, estimatedDelivery: tracking.estimatedDelivery ?? null, currentLocation: tracking.currentLocation ?? null, timeline: JSON.parse(tracking.timeline), updatedAt: tracking.updatedAt.toISOString() });
 });
 
-// ANALYTICS
+// ANALYTICS — all metrics below are computed from real rows, not simulated.
 router.get("/analytics/dashboard", async (req, res): Promise<void> => {
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
   const totalRevenue = await db.select({ total: sql<number>`coalesce(sum(total), 0)` }).from(ordersTable).where(eq(ordersTable.paymentStatus, "paid"));
   const totalOrders = await db.select({ count: sql<number>`count(*)` }).from(ordersTable);
   const totalCustomers = await db.select({ count: sql<number>`count(*)` }).from(usersTable).where(eq(usersTable.role, "customer"));
@@ -299,6 +337,17 @@ router.get("/analytics/dashboard", async (req, res): Promise<void> => {
   const totalBookings = await db.select({ count: sql<number>`count(*)` }).from(bookingsTable);
   const pendingOrders = await db.select({ count: sql<number>`count(*)` }).from(ordersTable).where(eq(ordersTable.status, "pending"));
   const lowStock = await db.select({ count: sql<number>`count(*)` }).from(productsTable).where(sql`stock < 5`);
+  const newCustomersThisMonth = await db.select({ count: sql<number>`count(*)` }).from(usersTable)
+    .where(and(eq(usersTable.role, "customer"), gte(usersTable.createdAt, startOfMonth)));
+  const revenueThisMonth = await db.select({ total: sql<number>`coalesce(sum(total), 0)` }).from(ordersTable)
+    .where(and(eq(ordersTable.paymentStatus, "paid"), gte(ordersTable.createdAt, startOfMonth)));
+  // Conversion rate needs a denominator of "people who showed interest" — analytics_events
+  // (product/experience views) is the only traffic signal this app tracks, so distinct sessions
+  // there is the realistic stand-in for "visits" until real page-level analytics exist.
+  const distinctSessions = await db.select({ count: sql<number>`count(distinct ${analyticsEventsTable.sessionId})` }).from(analyticsEventsTable);
+  const sessionCount = Number(distinctSessions[0]?.count ?? 0);
+  const conversionRate = sessionCount > 0 ? (Number(totalOrders[0]?.count ?? 0) / sessionCount) * 100 : 0;
+
   res.json({
     totalRevenue: Number(totalRevenue[0]?.total ?? 0),
     totalOrders: Number(totalOrders[0]?.count ?? 0),
@@ -307,24 +356,49 @@ router.get("/analytics/dashboard", async (req, res): Promise<void> => {
     totalBookings: Number(totalBookings[0]?.count ?? 0),
     pendingOrders: Number(pendingOrders[0]?.count ?? 0),
     lowStockProducts: Number(lowStock[0]?.count ?? 0),
-    newCustomersThisMonth: Math.floor(Number(totalCustomers[0]?.count ?? 0) * 0.2),
-    revenueThisMonth: Number(totalRevenue[0]?.total ?? 0) * 0.3,
-    conversionRate: 3.4,
+    newCustomersThisMonth: Number(newCustomersThisMonth[0]?.count ?? 0),
+    revenueThisMonth: Number(revenueThisMonth[0]?.total ?? 0),
+    conversionRate: Number(conversionRate.toFixed(2)),
   });
 });
 
 router.get("/analytics/sales", async (req, res): Promise<void> => {
   const period = (req.query.period as string) || "month";
   const days = period === "week" ? 7 : period === "year" ? 365 : 30;
+  const since = new Date();
+  since.setDate(since.getDate() - (days - 1));
+  since.setHours(0, 0, 0, 0);
+
+  const dateExprOrders = sql<string>`to_char(${ordersTable.createdAt}, 'YYYY-MM-DD')`;
+  const dateExprBookings = sql<string>`to_char(${bookingsTable.createdAt}, 'YYYY-MM-DD')`;
+
+  const revenueRows = await db.select({ date: dateExprOrders, revenue: sql<number>`coalesce(sum(${ordersTable.total}), 0)` })
+    .from(ordersTable)
+    .where(and(gte(ordersTable.createdAt, since), eq(ordersTable.paymentStatus, "paid")))
+    .groupBy(dateExprOrders);
+  const orderCountRows = await db.select({ date: dateExprOrders, count: sql<number>`count(*)` })
+    .from(ordersTable)
+    .where(gte(ordersTable.createdAt, since))
+    .groupBy(dateExprOrders);
+  const bookingCountRows = await db.select({ date: dateExprBookings, count: sql<number>`count(*)` })
+    .from(bookingsTable)
+    .where(gte(bookingsTable.createdAt, since))
+    .groupBy(dateExprBookings);
+
+  const revenueByDate = new Map(revenueRows.map(r => [r.date, Number(r.revenue)]));
+  const orderCountByDate = new Map(orderCountRows.map(r => [r.date, Number(r.count)]));
+  const bookingCountByDate = new Map(bookingCountRows.map(r => [r.date, Number(r.count)]));
+
   const data = [];
   for (let i = days - 1; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split("T")[0];
     data.push({
-      date: date.toISOString().split("T")[0],
-      revenue: Math.floor(Math.random() * 2000) + 500,
-      orders: Math.floor(Math.random() * 20) + 2,
-      bookings: Math.floor(Math.random() * 5),
+      date: dateStr,
+      revenue: revenueByDate.get(dateStr) ?? 0,
+      orders: orderCountByDate.get(dateStr) ?? 0,
+      bookings: bookingCountByDate.get(dateStr) ?? 0,
     });
   }
   res.json(data);
@@ -332,24 +406,107 @@ router.get("/analytics/sales", async (req, res): Promise<void> => {
 
 router.get("/analytics/top-products", async (req, res): Promise<void> => {
   const limit = parseInt((req.query.limit as string) || "5", 10);
-  const products = await db.select().from(productsTable).where(eq(productsTable.active, true)).limit(limit);
-  const artisans = await db.select().from(artisansTable);
-  res.json(products.map((p, i) => ({
-    productId: p.id, name: p.name, image: p.images[0] ?? "",
-    totalSold: Math.floor(Math.random() * 100) + 10,
-    revenue: (Math.floor(Math.random() * 100) + 10) * Number(p.price),
-    artisanName: artisans.find(a => a.id === p.artisanId)?.name ?? "Unknown",
-  })));
+  const rows = await db.select({
+    productId: orderItemsTable.productId,
+    totalSold: sql<number>`coalesce(sum(${orderItemsTable.quantity}), 0)`,
+    revenue: sql<number>`coalesce(sum(${orderItemsTable.subtotal}), 0)`,
+  }).from(orderItemsTable)
+    .groupBy(orderItemsTable.productId)
+    .orderBy(desc(sql`sum(${orderItemsTable.subtotal})`))
+    .limit(limit);
+
+  const productIds = rows.map(r => r.productId);
+  const products = productIds.length > 0 ? await db.select().from(productsTable).where(inArray(productsTable.id, productIds)) : [];
+  const artisanIds = products.map(p => p.artisanId);
+  const artisans = artisanIds.length > 0 ? await db.select().from(artisansTable).where(inArray(artisansTable.id, artisanIds)) : [];
+
+  res.json(rows.map(r => {
+    const product = products.find(p => p.id === r.productId);
+    return {
+      productId: r.productId,
+      name: product?.name ?? "Unknown product",
+      image: product?.images[0] ?? "",
+      totalSold: Number(r.totalSold),
+      revenue: Number(r.revenue),
+      artisanName: artisans.find(a => a.id === product?.artisanId)?.name ?? "Unknown",
+    };
+  }));
 });
 
 router.get("/analytics/top-experiences", async (req, res): Promise<void> => {
-  const experiences = await db.select().from(experiencesTable).where(eq(experiencesTable.active, true)).limit(5);
-  res.json(experiences.map(e => ({
-    experienceId: e.id, title: e.title, type: e.type,
-    totalBookings: Math.floor(Math.random() * 50) + 5,
-    revenue: (Math.floor(Math.random() * 50) + 5) * Number(e.price),
-    averageRating: Number((Math.random() * 1.5 + 3.5).toFixed(1)),
-  })));
+  const limit = parseInt((req.query.limit as string) || "5", 10);
+  const rows = await db.select({
+    experienceId: bookingsTable.experienceId,
+    totalBookings: sql<number>`count(*)`,
+    revenue: sql<number>`coalesce(sum(${bookingsTable.totalAmount}), 0)`,
+  }).from(bookingsTable)
+    .where(ne(bookingsTable.status, "cancelled"))
+    .groupBy(bookingsTable.experienceId)
+    .orderBy(desc(sql`count(*)`))
+    .limit(limit);
+
+  const experienceIds = rows.map(r => r.experienceId);
+  const experiences = experienceIds.length > 0 ? await db.select().from(experiencesTable).where(inArray(experiencesTable.id, experienceIds)) : [];
+  const ratingRows = experienceIds.length > 0
+    ? await db.select({ experienceId: reviewsTable.experienceId, avgRating: sql<number>`avg(${reviewsTable.rating})` })
+        .from(reviewsTable)
+        .where(and(inArray(reviewsTable.experienceId, experienceIds), eq(reviewsTable.status, "approved")))
+        .groupBy(reviewsTable.experienceId)
+    : [];
+
+  res.json(rows.map(r => {
+    const exp = experiences.find(e => e.id === r.experienceId);
+    const ratingRow = ratingRows.find(rr => rr.experienceId === r.experienceId);
+    return {
+      experienceId: r.experienceId,
+      title: exp?.title ?? "Unknown experience",
+      type: exp?.type ?? "",
+      totalBookings: Number(r.totalBookings),
+      revenue: Number(r.revenue),
+      averageRating: ratingRow?.avgRating != null ? Number(Number(ratingRow.avgRating).toFixed(1)) : null,
+    };
+  }));
+});
+
+router.get("/analytics/most-viewed", async (req, res): Promise<void> => {
+  const limit = parseInt((req.query.limit as string) || "5", 10);
+  const eventType = req.query.eventType as string | undefined;
+  const where = eventType ? eq(analyticsEventsTable.eventType, eventType) : undefined;
+
+  const rows = await db.select({
+    eventType: analyticsEventsTable.eventType,
+    entityId: analyticsEventsTable.entityId,
+    viewCount: sql<number>`count(*)`,
+  }).from(analyticsEventsTable)
+    .where(where)
+    .groupBy(analyticsEventsTable.eventType, analyticsEventsTable.entityId)
+    .orderBy(desc(sql`count(*)`))
+    .limit(limit);
+
+  const productIds = rows.filter(r => r.eventType === "view_product").map(r => r.entityId);
+  const experienceIds = rows.filter(r => r.eventType === "view_experience").map(r => r.entityId);
+  const packageIds = rows.filter(r => r.eventType === "view_package").map(r => r.entityId);
+
+  const [products, experiences, packages] = await Promise.all([
+    productIds.length > 0 ? db.select({ id: productsTable.id, name: productsTable.name }).from(productsTable).where(inArray(productsTable.id, productIds)) : Promise.resolve([] as { id: number; name: string }[]),
+    experienceIds.length > 0 ? db.select({ id: experiencesTable.id, title: experiencesTable.title }).from(experiencesTable).where(inArray(experiencesTable.id, experienceIds)) : Promise.resolve([] as { id: number; title: string }[]),
+    packageIds.length > 0 ? db.select({ id: experiencePackagesTable.id, title: experiencePackagesTable.title }).from(experiencePackagesTable).where(inArray(experiencePackagesTable.id, packageIds)) : Promise.resolve([] as { id: number; title: string }[]),
+  ]);
+
+  res.json(rows.map(r => {
+    let title = "Unknown";
+    if (r.eventType === "view_product") title = products.find(p => p.id === r.entityId)?.name ?? title;
+    else if (r.eventType === "view_experience") title = experiences.find(e => e.id === r.entityId)?.title ?? title;
+    else if (r.eventType === "view_package") title = packages.find(p => p.id === r.entityId)?.title ?? title;
+    return { eventType: r.eventType, entityId: r.entityId, title, viewCount: Number(r.viewCount) };
+  }));
+});
+
+router.post("/analytics/events", async (req, res): Promise<void> => {
+  const parsed = AnalyticsEventSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  await db.insert(analyticsEventsTable).values(parsed.data);
+  res.status(201).json({ message: "Event recorded" });
 });
 
 export default router;

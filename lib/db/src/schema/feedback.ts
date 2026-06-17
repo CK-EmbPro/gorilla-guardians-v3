@@ -9,6 +9,8 @@ export const feedbackTable = pgTable("feedback", {
   subject: text("subject").notNull(),
   message: text("message").notNull(),
   rating: integer("rating"),
+  guestName: text("guest_name"),
+  guestEmail: text("guest_email"),
   status: text("status").notNull().default("open"),
   adminResponse: text("admin_response"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

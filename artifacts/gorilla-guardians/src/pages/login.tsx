@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -89,6 +89,12 @@ export default function LoginPage() {
                   {loading ? "Signing in..." : "Sign in"}
                 </Button>
               </form>
+
+              <div className="mt-3 text-center">
+                <Link href="/forgot-password" className="text-xs text-muted-foreground hover:text-primary underline transition-colors" data-testid="link-forgot-password">
+                  Forgot password?
+                </Link>
+              </div>
 
               <div className="mt-4 text-center">
                 <button

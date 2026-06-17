@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Package, Users, BookOpen, ShoppingBag, Star, MessageSquare,
   Bell, FileText, Calendar, BarChart2, Heart, LogOut, ChevronLeft, ChevronRight,
   Megaphone, TreePine, Truck, Settings, User, DollarSign, PlusCircle, Globe, Mail,
-  ScanLine, UserCheck,
+  ScanLine, UserCheck, Layers,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin/products", label: "Products", icon: Package, roles: ["admin", "super_admin"] },
   { href: "/admin/artisans", label: "Artisans", icon: Users, roles: ["admin", "super_admin"] },
   { href: "/admin/experiences", label: "Experiences", icon: TreePine, roles: ["admin", "super_admin"] },
+  { href: "/admin/packages", label: "Packages", icon: Layers, roles: ["admin", "super_admin"] },
   { href: "/admin/orders", label: "Orders", icon: ShoppingBag, roles: ["admin", "super_admin"] },
   { href: "/admin/delivery", label: "Delivery", icon: Truck, roles: ["admin", "super_admin"] },
   { href: "/admin/users", label: "Users", icon: User, roles: ["admin", "super_admin"] },

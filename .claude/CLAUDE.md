@@ -243,6 +243,7 @@ Phase 4 is MANDATORY whenever Phase 3 produces findings or new code is generated
 
 ## Rules
 
+- NO ASSUMPTIONS — if a user's request or prompt has unclear, incomplete, or ambiguous requirements for a change, do NOT guess intent or fill gaps silently. STOP and ask the user a clarifying question before making any change. See [Memory: No Assumptions Policy](../.agents/memory/no-assumptions-policy.md).
 - HOOKS ARE ORCHESTRATORS ONLY — they route to skills, never analyze directly.
 - SKILLS ARE DOMAIN-EXPERT ENGINES — all findings come from skills.
 - If context is missing for any skill: say "Unable to verify — [reason]" and request the file.

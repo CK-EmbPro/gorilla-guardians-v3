@@ -1,6 +1,7 @@
 import { db, emailLogsTable } from "@workspace/db";
 
 const BASE_URL = process.env.APP_URL ?? "https://gorilla-guardians.replit.app";
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? "Gorilla Guardians Village <noreply@gorillagardians.com>";
 
 function brandHeader() {
   return `
@@ -58,6 +59,7 @@ async function logEmail(payload: EmailPayload, status: string, providerId?: stri
       providerId: providerId ?? null,
       errorMessage: errorMessage ?? null,
       metadata: payload.metadata ? JSON.stringify(payload.metadata) : null,
+      html: payload.html,
       sentAt: status === "sent" ? new Date() : null,
     });
   } catch (err) {
@@ -82,7 +84,7 @@ export async function sendEmail(payload: EmailPayload): Promise<void> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Gorilla Guardians Village <noreply@gorillagardians.com>",
+        from: FROM_EMAIL,
         to: [payload.to],
         subject: payload.subject,
         html: payload.html,
@@ -153,6 +155,24 @@ export const emailTemplates = {
       </div>`);
   },
 
+  bookingRejected(data: { customerName: string; experienceTitle: string; date: string; bookingId: number }) {
+    return wrap(`
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="font-size:40px;margin-bottom:12px;">😔</div>
+        <h2 style="font-family:Georgia,serif;color:#c0392b;margin:0 0 8px;">Booking Request Declined</h2>
+        <p style="color:#666;margin:0;">Hi ${data.customerName}, we're unable to confirm this booking request.</p>
+      </div>
+      <div style="background:#fff8f8;border:1px solid #f5c6c6;border-radius:8px;padding:20px;margin-bottom:24px;">
+        <p style="margin:0 0 6px;font-size:14px;color:#333;"><strong>${data.experienceTitle}</strong></p>
+        <p style="margin:0;font-size:14px;color:#666;">📅 Requested for ${data.date}</p>
+      </div>
+      <p style="color:#666;font-size:14px;">This is usually due to capacity or scheduling constraints on the requested date. No payment was taken for this request. Please try a different date, or contact our team if you'd like help finding availability.</p>
+      <div style="text-align:center;margin-top:24px;">
+        <a href="${BASE_URL}/experiences" style="display:inline-block;background:#2D6A4F;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;margin-right:12px;">Browse Experiences</a>
+        <a href="${BASE_URL}/contact" style="display:inline-block;background:#fff;color:#2D6A4F;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;border:1px solid #2D6A4F;">Contact Support</a>
+      </div>`);
+  },
+
   bookingCancelled(data: { customerName: string; experienceTitle: string; date: string; bookingId: number }) {
     return wrap(`
       <div style="text-align:center;margin-bottom:24px;">
@@ -217,6 +237,32 @@ export const emailTemplates = {
       </div>
       <div style="text-align:center;">
         <a href="${BASE_URL}/track?number=${data.trackingNumber}" style="display:inline-block;background:#2D6A4F;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;">Track Your Package</a>
+      </div>`);
+  },
+
+  orderProcessing(data: { customerName: string; orderId: number }) {
+    return wrap(`
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="font-size:40px;margin-bottom:12px;">🎨</div>
+        <h2 style="font-family:Georgia,serif;color:#2D6A4F;margin:0 0 8px;">Your Order is Being Crafted</h2>
+        <p style="color:#666;margin:0;">Hi ${data.customerName}, your artisan has started working on order #${data.orderId}.</p>
+      </div>
+      <p style="color:#666;font-size:14px;text-align:center;margin-bottom:24px;">We'll email you again as soon as it ships.</p>
+      <div style="text-align:center;">
+        <a href="${BASE_URL}/customer/orders" style="display:inline-block;background:#2D6A4F;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;">View Order</a>
+      </div>`);
+  },
+
+  orderCancelled(data: { customerName: string; orderId: number }) {
+    return wrap(`
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="font-size:40px;margin-bottom:12px;">❌</div>
+        <h2 style="font-family:Georgia,serif;color:#c0392b;margin:0 0 8px;">Order Cancelled</h2>
+        <p style="color:#666;margin:0;">Hi ${data.customerName}, your order #${data.orderId} has been cancelled.</p>
+      </div>
+      <p style="color:#666;font-size:14px;text-align:center;margin-bottom:24px;">If you didn't request this or have questions, please contact our support team.</p>
+      <div style="text-align:center;">
+        <a href="${BASE_URL}/contact" style="display:inline-block;background:#2D6A4F;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;">Contact Support</a>
       </div>`);
   },
 
@@ -286,6 +332,88 @@ export const emailTemplates = {
       <div style="text-align:center;">
         <a href="${BASE_URL}/products" style="display:inline-block;background:#2D6A4F;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;margin-right:12px;">Shop Now</a>
         <a href="${BASE_URL}/experiences" style="display:inline-block;background:#fff;color:#2D6A4F;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;border:1px solid #2D6A4F;">Book an Experience</a>
+      </div>`);
+  },
+
+  packageBookingConfirmation(data: {
+    customerName: string;
+    packageTitle: string;
+    date: string;
+    participants: number;
+    totalAmount: number;
+    experienceTitles: string[];
+    packageBookingRef: string;
+  }) {
+    const experienceRows = data.experienceTitles.map(t => `<li style="margin:0 0 4px;">${t}</li>`).join("");
+    return wrap(`
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="width:64px;height:64px;background:#d1fae5;border-radius:50%;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:28px;">✅</div>
+        <h2 style="font-family:Georgia,serif;color:#2D6A4F;margin:0 0 8px;">Package Booking Confirmed!</h2>
+        <p style="color:#666;margin:0;">Thank you for booking with us, ${data.customerName}.</p>
+      </div>
+      <div style="background:#f8fffe;border:1px solid #b7e4c7;border-radius:8px;padding:20px;margin-bottom:24px;">
+        <h3 style="margin:0 0 12px;color:#1b4332;font-family:Georgia,serif;">${data.packageTitle}</h3>
+        <ul style="margin:0 0 16px;padding-left:18px;font-size:14px;color:#333;">${experienceRows}</ul>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><td style="padding:6px 0;color:#666;font-size:14px;">Reference</td><td style="padding:6px 0;font-weight:600;font-size:14px;text-align:right;font-family:monospace;">${data.packageBookingRef}</td></tr>
+          <tr><td style="padding:6px 0;color:#666;font-size:14px;">Date</td><td style="padding:6px 0;font-weight:600;font-size:14px;text-align:right;">${data.date}</td></tr>
+          <tr><td style="padding:6px 0;color:#666;font-size:14px;">Participants</td><td style="padding:6px 0;font-weight:600;font-size:14px;text-align:right;">${data.participants}</td></tr>
+          <tr style="border-top:1px solid #b7e4c7;"><td style="padding:10px 0 6px;color:#1b4332;font-weight:700;font-size:15px;">Total</td><td style="padding:10px 0 6px;font-weight:700;font-size:15px;text-align:right;color:#2D6A4F;">$${data.totalAmount.toFixed(2)}</td></tr>
+        </table>
+      </div>
+      <p style="color:#666;font-size:14px;line-height:1.6;">Each experience in this package is pending confirmation by our team. We'll reach out within 24 hours.</p>
+      <div style="text-align:center;margin-top:24px;">
+        <a href="${BASE_URL}/customer/bookings" style="display:inline-block;background:#2D6A4F;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;">View My Bookings</a>
+      </div>`);
+  },
+
+  bookingPaymentConfirmed(data: { customerName: string; experienceTitle: string; date: string; amount: number; bookingReference?: string | null }) {
+    return wrap(`
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="font-size:40px;margin-bottom:12px;">💳</div>
+        <h2 style="font-family:Georgia,serif;color:#2D6A4F;margin:0 0 8px;">Payment Received — You're All Set!</h2>
+        <p style="color:#666;margin:0;">Thanks ${data.customerName}, your payment for this experience has been confirmed.</p>
+      </div>
+      <div style="background:#f8fffe;border:1px solid #b7e4c7;border-radius:8px;padding:20px;margin-bottom:24px;">
+        <table style="width:100%;border-collapse:collapse;">
+          ${data.bookingReference ? `<tr><td style="padding:6px 0;color:#666;font-size:14px;">Reference</td><td style="padding:6px 0;font-weight:600;font-size:14px;text-align:right;font-family:monospace;">${data.bookingReference}</td></tr>` : ""}
+          <tr><td style="padding:6px 0;color:#666;font-size:14px;">Experience</td><td style="padding:6px 0;font-weight:600;font-size:14px;text-align:right;">${data.experienceTitle}</td></tr>
+          <tr><td style="padding:6px 0;color:#666;font-size:14px;">Date</td><td style="padding:6px 0;font-weight:600;font-size:14px;text-align:right;">${data.date}</td></tr>
+          <tr style="border-top:1px solid #b7e4c7;"><td style="padding:10px 0 6px;color:#1b4332;font-weight:700;font-size:15px;">Amount Paid</td><td style="padding:10px 0 6px;font-weight:700;font-size:15px;text-align:right;color:#2D6A4F;">$${data.amount.toFixed(2)}</td></tr>
+        </table>
+      </div>
+      <div style="text-align:center;margin-top:24px;">
+        <a href="${BASE_URL}/customer/bookings" style="display:inline-block;background:#2D6A4F;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;">View My Bookings</a>
+      </div>`);
+  },
+
+  passwordReset(data: { name: string; resetUrl: string }) {
+    return wrap(`
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="font-size:40px;margin-bottom:12px;">🔒</div>
+        <h2 style="font-family:Georgia,serif;color:#2D6A4F;margin:0 0 8px;">Reset Your Password</h2>
+        <p style="color:#666;margin:0;">Hi ${data.name}, we received a request to reset your password.</p>
+      </div>
+      <p style="color:#666;font-size:14px;text-align:center;margin-bottom:24px;">Click the button below to choose a new password. This link expires in 1 hour. If you didn't request this, you can safely ignore this email.</p>
+      <div style="text-align:center;">
+        <a href="${data.resetUrl}" style="display:inline-block;background:#2D6A4F;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;">Reset Password</a>
+      </div>`);
+  },
+
+  contactFormReceived(data: { name: string; email: string; subject: string; message: string }) {
+    return wrap(`
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="font-size:40px;margin-bottom:12px;">📨</div>
+        <h2 style="font-family:Georgia,serif;color:#2D6A4F;margin:0 0 8px;">New Contact Form Message</h2>
+      </div>
+      <div style="background:#f8fffe;border:1px solid #b7e4c7;border-radius:8px;padding:20px;margin-bottom:20px;">
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><td style="padding:6px 0;color:#666;font-size:14px;">From</td><td style="padding:6px 0;font-weight:600;font-size:14px;text-align:right;">${data.name} &lt;${data.email}&gt;</td></tr>
+          <tr><td style="padding:6px 0;color:#666;font-size:14px;">Subject</td><td style="padding:6px 0;font-weight:600;font-size:14px;text-align:right;">${data.subject}</td></tr>
+        </table>
+      </div>
+      <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px;">
+        <p style="margin:0;font-size:14px;color:#444;white-space:pre-line;">${data.message}</p>
       </div>`);
   },
 

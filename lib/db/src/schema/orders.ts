@@ -12,6 +12,8 @@ export const ordersTable = pgTable("orders", {
   status: text("status").notNull().default("pending"),
   paymentMethod: text("payment_method").notNull(),
   paymentStatus: text("payment_status").notNull().default("pending"),
+  stripeSessionId: text("stripe_session_id"),
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
   shippingAddress: text("shipping_address").notNull(),
   shippingType: text("shipping_type").notNull().default("global"),
   shippingCarrier: text("shipping_carrier"),

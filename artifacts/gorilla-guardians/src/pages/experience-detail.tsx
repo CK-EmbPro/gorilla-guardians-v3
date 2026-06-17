@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRoute, useLocation, Link } from "wouter";
 import { Clock, Users, MapPin, Star, CheckCircle, Calendar, TreePine } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,12 +14,17 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { trackEvent } from "@/lib/trackEvent";
 
 export default function ExperienceDetailPage() {
   const [, params] = useRoute("/experiences/:id");
   const [, setLocation] = useLocation();
   const id = Number(params?.id);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (id) trackEvent("view_experience", id);
+  }, [id]);
 
   const { data: experience, isLoading } = useGetExperience(id, { query: { enabled: !!id, queryKey: getGetExperienceQueryKey(id) } });
   const createBooking = useCreateBooking();

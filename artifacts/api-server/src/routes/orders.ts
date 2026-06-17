@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, sql, desc } from "drizzle-orm";
-import { db, ordersTable, orderItemsTable, productsTable, deliveryTrackingTable, artisansTable } from "@workspace/db";
+import { db, ordersTable, orderItemsTable, productsTable, deliveryTrackingTable, artisansTable, usersTable } from "@workspace/db";
 import {
   ListOrdersQueryParams,
   GetOrderParams,
@@ -10,6 +10,9 @@ import {
 } from "@workspace/api-zod";
 import { createNotification, notifyAdmins } from "../lib/notificationHelper";
 import { sendEmail, emailTemplates } from "../lib/emailService";
+import { getStripeClient, isStripeConfigured } from "../lib/stripeService";
+
+const APP_URL = process.env.APP_URL ?? "https://gorillaguardians.rw";
 
 const router: IRouter = Router();
 
@@ -232,11 +235,73 @@ router.patch("/orders/:id", async (req, res): Promise<void> => {
           template: "order_delivered",
           userId: order.userId,
         }).catch(err => console.error("[orders] email error:", err));
+      } else if (parsed.data.status === "processing") {
+        sendEmail({
+          to: customer.email,
+          toName: customer.name,
+          subject: `Your Order #${order.id} is Being Processed`,
+          html: emailTemplates.orderProcessing({ customerName: customer.name, orderId: order.id }),
+          template: "order_processing",
+          userId: order.userId,
+        }).catch(err => console.error("[orders] email error:", err));
+      } else if (parsed.data.status === "cancelled") {
+        sendEmail({
+          to: customer.email,
+          toName: customer.name,
+          subject: `Order #${order.id} Cancelled`,
+          html: emailTemplates.orderCancelled({ customerName: customer.name, orderId: order.id }),
+          template: "order_cancelled",
+          userId: order.userId,
+        }).catch(err => console.error("[orders] email error:", err));
       }
     }
   }
 
   res.json(await buildOrder(order));
+});
+
+router.post("/orders/:id/checkout-session", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  if (!isStripeConfigured()) { res.status(503).json({ error: "Payments are not configured yet. Set STRIPE_SECRET_KEY." }); return; }
+
+  const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id));
+  if (!order) { res.status(404).json({ error: "Order not found" }); return; }
+  if (order.paymentStatus === "paid") { res.status(400).json({ error: "Order is already paid" }); return; }
+
+  const items = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, order.id));
+  if (items.length === 0) { res.status(400).json({ error: "Order has no items" }); return; }
+
+  const lineItems = items.map(item => ({
+    price_data: {
+      currency: "usd",
+      product_data: { name: item.productName, images: item.productImage ? [item.productImage] : undefined },
+      unit_amount: Math.round(Number(item.price) * 100),
+    },
+    quantity: item.quantity,
+  }));
+  if (order.shippingCost > 0) {
+    lineItems.push({
+      price_data: {
+        currency: "usd",
+        product_data: { name: "Shipping", images: undefined },
+        unit_amount: Math.round(Number(order.shippingCost) * 100),
+      },
+      quantity: 1,
+    });
+  }
+
+  const session = await getStripeClient().checkout.sessions.create({
+    mode: "payment",
+    line_items: lineItems,
+    success_url: `${APP_URL}/payment-success?orderId=${order.id}`,
+    cancel_url: `${APP_URL}/payment-failed?orderId=${order.id}&reason=Checkout+was+cancelled.+Your+order+is+saved.`,
+    metadata: { kind: "order", orderId: String(order.id) },
+  });
+
+  await db.update(ordersTable).set({ stripeSessionId: session.id }).where(eq(ordersTable.id, order.id));
+
+  res.status(201).json({ url: session.url });
 });
 
 export default router;

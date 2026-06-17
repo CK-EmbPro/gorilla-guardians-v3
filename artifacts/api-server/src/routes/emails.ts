@@ -32,9 +32,13 @@ router.post("/emails/resend/:id", async (req, res): Promise<void> => {
         to: log.toEmail,
         toName: log.toName ?? undefined,
         subject: log.subject,
-        html: `<p>Resent from log #${id}</p>`,
+        // Reuse the originally-rendered HTML so a resend delivers the same content the
+        // customer was supposed to get. Older rows logged before the `html` column existed
+        // fall back to a clearly-labelled placeholder rather than crashing.
+        html: log.html ?? `<p>Resent from log #${id} — original content unavailable (logged before HTML capture was added).</p>`,
         template: log.template,
         userId: log.userId ?? undefined,
+        metadata: log.metadata ? JSON.parse(log.metadata) : undefined,
       });
     } catch (err) {
       console.error("[emails] resend error:", err);
@@ -49,7 +53,7 @@ router.get("/emails/stats", async (_req, res): Promise<void> => {
   const failed = logs.filter(l => l.status === "failed").length;
   const skipped = logs.filter(l => l.status === "skipped").length;
   const pending = logs.filter(l => l.status === "pending").length;
-  res.json({ total, sent, failed, skipped, pending });
+  res.json({ total, sent, failed, skipped, pending, resendConfigured: !!process.env.RESEND_API_KEY });
 });
 
 export default router;

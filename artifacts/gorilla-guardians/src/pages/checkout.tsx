@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { CreditCard, Truck, MapPin } from "lucide-react";
+import { Lock, ShieldCheck, Truck, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,18 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { useGetCart, useCreateOrder, useClearCart, getGetCartQueryKey, OrderInputShippingType } from "@workspace/api-client-react";
+import { useGetCart, useCreateOrder, useCreateOrderCheckoutSession, useClearCart, getGetCartQueryKey, OrderInputShippingType } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { useToast } from "@/hooks/use-toast";
-
-const PAYMENT_METHODS = [
-  { id: "card", label: "Credit / Debit Card", icon: "💳" },
-  { id: "paypal", label: "PayPal", icon: "🅿️" },
-  { id: "momo", label: "MTN Mobile Money", icon: "📱" },
-  { id: "bank", label: "Bank Transfer", icon: "🏦" },
-];
 
 const SHIPPING_TYPES = [
   { id: "global", label: "International Shipping (7–14 days)", price: 25 },
@@ -30,12 +23,12 @@ export default function CheckoutPage() {
   const { data: cart } = useGetCart();
   const createOrder = useCreateOrder();
   const clearCart = useClearCart();
+  const createCheckoutSession = useCreateOrderCheckoutSession();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
   const [step, setStep] = useState<"shipping" | "payment">("shipping");
-  const [paymentMethod, setPaymentMethod] = useState("card");
   const [shippingType, setShippingType] = useState<OrderInputShippingType>("global");
   const [form, setForm] = useState({
     name: "", email: "", phone: "", address: "", city: "", country: "", postalCode: "",
@@ -46,6 +39,10 @@ export default function CheckoutPage() {
   const shipping = SHIPPING_TYPES.find(s => s.id === shippingType)?.price ?? 25;
   const total = subtotal + shipping;
 
+  // Card details are entered on Stripe's own hosted Checkout page, never on this site, so there's
+  // no "card number" form here. We just create the order, then redirect to the Checkout session
+  // Stripe gives us back. The order is preserved either way: if the visitor cancels on Stripe's
+  // page, they land back on /checkout with their cart intact, ready to retry.
   const handleSubmit = async () => {
     if (!form.name || !form.email || !form.address) {
       toast({ title: "Please fill in all required fields", variant: "destructive" });
@@ -57,7 +54,7 @@ export default function CheckoutPage() {
     createOrder.mutate({
       data: {
         items: orderItems,
-        paymentMethod,
+        paymentMethod: "card",
         shippingAddress,
         shippingType,
         notes: undefined,
@@ -66,19 +63,22 @@ export default function CheckoutPage() {
       onSuccess: (order: any) => {
         clearCart.mutate(undefined);
         queryClient.invalidateQueries({ queryKey: getGetCartQueryKey() });
-        const params = new URLSearchParams({
-          orderId: String(order.id ?? ""),
-          tracking: order.trackingNumber ?? "",
-          total: total.toFixed(2),
-          ref: `GG-PAY-${Date.now().toString(36).toUpperCase()}`,
+        createCheckoutSession.mutate({ id: order.id }, {
+          onSuccess: (session: any) => {
+            window.location.href = session.url;
+          },
+          onError: () => {
+            setLocation(`/payment-failed?orderId=${order.id}&reason=Could+not+start+checkout.+Your+order+is+saved.`);
+          },
         });
-        setLocation(`/payment-success?${params.toString()}`);
       },
       onError: () => {
         setLocation("/payment-failed?reason=Payment+could+not+be+processed.+Your+cart+is+saved.");
       },
     });
   };
+
+  const isSubmitting = createOrder.isPending || createCheckoutSession.isPending;
 
   const updateForm = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }));
 
@@ -167,45 +167,25 @@ export default function CheckoutPage() {
               <div className="space-y-6">
                 <Button variant="ghost" onClick={() => setStep("shipping")} className="mb-2 text-primary">← Back to Shipping</Button>
                 <Card>
-                  <CardHeader><CardTitle className="flex items-center gap-2"><CreditCard className="w-5 h-5 text-primary" /> Payment Method</CardTitle></CardHeader>
+                  <CardHeader><CardTitle className="flex items-center gap-2"><Lock className="w-5 h-5 text-primary" /> Secure Payment</CardTitle></CardHeader>
                   <CardContent>
-                    <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-3">
-                      {PAYMENT_METHODS.map(m => (
-                        <div key={m.id} className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-colors ${paymentMethod === m.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`} onClick={() => setPaymentMethod(m.id)} data-testid={`option-payment-${m.id}`}>
-                          <RadioGroupItem value={m.id} id={m.id} />
-                          <span className="text-xl">{m.icon}</span>
-                          <Label htmlFor={m.id} className="cursor-pointer">{m.label}</Label>
-                        </div>
-                      ))}
-                    </RadioGroup>
-                    {paymentMethod === "card" && (
-                      <div className="mt-4 p-4 bg-muted/50 rounded-lg space-y-3">
-                        <div>
-                          <Label>Card Number</Label>
-                          <Input placeholder="1234 5678 9012 3456" className="mt-1 font-mono" data-testid="input-card-number" />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <Label>Expiry</Label>
-                            <Input placeholder="MM / YY" className="mt-1 font-mono" data-testid="input-card-expiry" />
-                          </div>
-                          <div>
-                            <Label>CVC</Label>
-                            <Input placeholder="123" className="mt-1 font-mono" data-testid="input-card-cvc" />
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                    <div className="p-4 bg-muted/50 rounded-lg flex items-start gap-3">
+                      <ShieldCheck className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                      <p className="text-sm text-muted-foreground">
+                        You'll enter your card details on Stripe's secure checkout page — we never see or store your
+                        card number. After payment, you'll be brought right back here.
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
 
                 <Button
                   className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                   onClick={handleSubmit}
-                  disabled={createOrder.isPending}
+                  disabled={isSubmitting}
                   data-testid="button-place-order"
                 >
-                  {createOrder.isPending ? "Placing Order..." : `Place Order — $${total.toFixed(2)}`}
+                  {isSubmitting ? "Redirecting to Stripe..." : `Continue to Payment — $${total.toFixed(2)}`}
                 </Button>
                 <p className="text-xs text-center text-muted-foreground">Your payment is secure. Every purchase supports artisan families in Rwanda.</p>
               </div>

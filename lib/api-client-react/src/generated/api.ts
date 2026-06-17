@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AnalyticsEventInput,
   Artisan,
   ArtisanInput,
   ArtisanUpdate,
@@ -31,6 +32,7 @@ import type {
   CartItemInput,
   CartItemUpdate,
   Category,
+  CheckoutSessionResponse,
   Conversation,
   ConversationInput,
   DashboardStats,
@@ -45,10 +47,14 @@ import type {
   Experience,
   ExperienceInput,
   ExperienceListResponse,
+  ExperiencePackage,
+  ExperiencePackageInput,
   ExperienceUpdate,
   Feedback,
   FeedbackInput,
   FeedbackUpdate,
+  ForgotPasswordInput,
+  GetMostViewedParams,
   GetSalesAnalyticsParams,
   GetTopProductsParams,
   HealthStatus,
@@ -69,16 +75,20 @@ import type {
   Message,
   MessageInput,
   MessageResponse,
+  MostViewedItem,
   Notification,
   Order,
   OrderInput,
   OrderListResponse,
   OrderUpdate,
+  PackageBookingInput,
+  PackageBookingResponse,
   Product,
   ProductInput,
   ProductListResponse,
   ProductUpdate,
   RegisterInput,
+  ResetPasswordInput,
   Review,
   ReviewInput,
   ReviewUpdate,
@@ -472,6 +482,148 @@ export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = Err
 
 
 
+
+export const getForgotPasswordUrl = () => {
+
+
+
+
+  return `/api/auth/forgot-password`
+}
+
+/**
+ * @summary Request a password reset email
+ */
+export const forgotPassword = async (forgotPasswordInput: ForgotPasswordInput, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getForgotPasswordUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      forgotPasswordInput,)
+  }
+);}
+
+
+
+
+export const getForgotPasswordMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof forgotPassword>>, TError,{data: BodyType<ForgotPasswordInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof forgotPassword>>, TError,{data: BodyType<ForgotPasswordInput>}, TContext> => {
+
+const mutationKey = ['forgotPassword'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof forgotPassword>>, {data: BodyType<ForgotPasswordInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  forgotPassword(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ForgotPasswordMutationResult = NonNullable<Awaited<ReturnType<typeof forgotPassword>>>
+    export type ForgotPasswordMutationBody = BodyType<ForgotPasswordInput>
+    export type ForgotPasswordMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Request a password reset email
+ */
+export const useForgotPassword = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof forgotPassword>>, TError,{data: BodyType<ForgotPasswordInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof forgotPassword>>,
+        TError,
+        {data: BodyType<ForgotPasswordInput>},
+        TContext
+      > => {
+      return useMutation(getForgotPasswordMutationOptions(options));
+    }
+
+export const getResetPasswordUrl = () => {
+
+
+
+
+  return `/api/auth/reset-password`
+}
+
+/**
+ * @summary Reset password using a reset token
+ */
+export const resetPassword = async (resetPasswordInput: ResetPasswordInput, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getResetPasswordUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      resetPasswordInput,)
+  }
+);}
+
+
+
+
+export const getResetPasswordMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetPassword>>, TError,{data: BodyType<ResetPasswordInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resetPassword>>, TError,{data: BodyType<ResetPasswordInput>}, TContext> => {
+
+const mutationKey = ['resetPassword'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resetPassword>>, {data: BodyType<ResetPasswordInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  resetPassword(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResetPasswordMutationResult = NonNullable<Awaited<ReturnType<typeof resetPassword>>>
+    export type ResetPasswordMutationBody = BodyType<ResetPasswordInput>
+    export type ResetPasswordMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Reset password using a reset token
+ */
+export const useResetPassword = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetPassword>>, TError,{data: BodyType<ResetPasswordInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resetPassword>>,
+        TError,
+        {data: BodyType<ResetPasswordInput>},
+        TContext
+      > => {
+      return useMutation(getResetPasswordMutationOptions(options));
+    }
 
 export const getListCategoriesUrl = () => {
 
@@ -1609,6 +1761,375 @@ export const useUpdateExperience = <TError = ErrorType<unknown>,
       return useMutation(getUpdateExperienceMutationOptions(options));
     }
 
+export const getListPackagesUrl = () => {
+
+
+
+
+  return `/api/packages`
+}
+
+/**
+ * @summary List experience packages
+ */
+export const listPackages = async ( options?: RequestInit): Promise<ExperiencePackage[]> => {
+
+  return customFetch<ExperiencePackage[]>(getListPackagesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPackagesQueryKey = () => {
+    return [
+    `/api/packages`
+    ] as const;
+    }
+
+
+export const getListPackagesQueryOptions = <TData = Awaited<ReturnType<typeof listPackages>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPackages>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPackagesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPackages>>> = ({ signal }) => listPackages({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPackages>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPackagesQueryResult = NonNullable<Awaited<ReturnType<typeof listPackages>>>
+export type ListPackagesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List experience packages
+ */
+
+export function useListPackages<TData = Awaited<ReturnType<typeof listPackages>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPackages>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPackagesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreatePackageUrl = () => {
+
+
+
+
+  return `/api/packages`
+}
+
+/**
+ * @summary Create an experience package (admin)
+ */
+export const createPackage = async (experiencePackageInput: ExperiencePackageInput, options?: RequestInit): Promise<ExperiencePackage> => {
+
+  return customFetch<ExperiencePackage>(getCreatePackageUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      experiencePackageInput,)
+  }
+);}
+
+
+
+
+export const getCreatePackageMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPackage>>, TError,{data: BodyType<ExperiencePackageInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPackage>>, TError,{data: BodyType<ExperiencePackageInput>}, TContext> => {
+
+const mutationKey = ['createPackage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPackage>>, {data: BodyType<ExperiencePackageInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPackage(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePackageMutationResult = NonNullable<Awaited<ReturnType<typeof createPackage>>>
+    export type CreatePackageMutationBody = BodyType<ExperiencePackageInput>
+    export type CreatePackageMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create an experience package (admin)
+ */
+export const useCreatePackage = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPackage>>, TError,{data: BodyType<ExperiencePackageInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPackage>>,
+        TError,
+        {data: BodyType<ExperiencePackageInput>},
+        TContext
+      > => {
+      return useMutation(getCreatePackageMutationOptions(options));
+    }
+
+export const getGetPackageUrl = (id: number,) => {
+
+
+
+
+  return `/api/packages/${id}`
+}
+
+/**
+ * @summary Get package by id
+ */
+export const getPackage = async (id: number, options?: RequestInit): Promise<ExperiencePackage> => {
+
+  return customFetch<ExperiencePackage>(getGetPackageUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPackageQueryKey = (id: number,) => {
+    return [
+    `/api/packages/${id}`
+    ] as const;
+    }
+
+
+export const getGetPackageQueryOptions = <TData = Awaited<ReturnType<typeof getPackage>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPackage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPackageQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPackage>>> = ({ signal }) => getPackage(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPackage>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPackageQueryResult = NonNullable<Awaited<ReturnType<typeof getPackage>>>
+export type GetPackageQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get package by id
+ */
+
+export function useGetPackage<TData = Awaited<ReturnType<typeof getPackage>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPackage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPackageQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpdatePackageUrl = (id: number,) => {
+
+
+
+
+  return `/api/packages/${id}`
+}
+
+/**
+ * @summary Update package (admin)
+ */
+export const updatePackage = async (id: number,
+    experiencePackageInput: ExperiencePackageInput, options?: RequestInit): Promise<ExperiencePackage> => {
+
+  return customFetch<ExperiencePackage>(getUpdatePackageUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      experiencePackageInput,)
+  }
+);}
+
+
+
+
+export const getUpdatePackageMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePackage>>, TError,{id: number;data: BodyType<ExperiencePackageInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updatePackage>>, TError,{id: number;data: BodyType<ExperiencePackageInput>}, TContext> => {
+
+const mutationKey = ['updatePackage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updatePackage>>, {id: number;data: BodyType<ExperiencePackageInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updatePackage(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdatePackageMutationResult = NonNullable<Awaited<ReturnType<typeof updatePackage>>>
+    export type UpdatePackageMutationBody = BodyType<ExperiencePackageInput>
+    export type UpdatePackageMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update package (admin)
+ */
+export const useUpdatePackage = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePackage>>, TError,{id: number;data: BodyType<ExperiencePackageInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updatePackage>>,
+        TError,
+        {id: number;data: BodyType<ExperiencePackageInput>},
+        TContext
+      > => {
+      return useMutation(getUpdatePackageMutationOptions(options));
+    }
+
+export const getBookPackageUrl = (id: number,) => {
+
+
+
+
+  return `/api/packages/${id}/book`
+}
+
+/**
+ * @summary Book all experiences included in a package for one date
+ */
+export const bookPackage = async (id: number,
+    packageBookingInput: PackageBookingInput, options?: RequestInit): Promise<PackageBookingResponse> => {
+
+  return customFetch<PackageBookingResponse>(getBookPackageUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      packageBookingInput,)
+  }
+);}
+
+
+
+
+export const getBookPackageMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bookPackage>>, TError,{id: number;data: BodyType<PackageBookingInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof bookPackage>>, TError,{id: number;data: BodyType<PackageBookingInput>}, TContext> => {
+
+const mutationKey = ['bookPackage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bookPackage>>, {id: number;data: BodyType<PackageBookingInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  bookPackage(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BookPackageMutationResult = NonNullable<Awaited<ReturnType<typeof bookPackage>>>
+    export type BookPackageMutationBody = BodyType<PackageBookingInput>
+    export type BookPackageMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Book all experiences included in a package for one date
+ */
+export const useBookPackage = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bookPackage>>, TError,{id: number;data: BodyType<PackageBookingInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof bookPackage>>,
+        TError,
+        {id: number;data: BodyType<PackageBookingInput>},
+        TContext
+      > => {
+      return useMutation(getBookPackageMutationOptions(options));
+    }
+
 export const getListBookingsUrl = (params?: ListBookingsParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -1913,6 +2434,76 @@ export const useUpdateBooking = <TError = ErrorType<unknown>,
       return useMutation(getUpdateBookingMutationOptions(options));
     }
 
+export const getCreateBookingCheckoutSessionUrl = (id: number,) => {
+
+
+
+
+  return `/api/bookings/${id}/checkout-session`
+}
+
+/**
+ * @summary Create a Stripe Checkout session to pay for an approved booking
+ */
+export const createBookingCheckoutSession = async (id: number, options?: RequestInit): Promise<CheckoutSessionResponse> => {
+
+  return customFetch<CheckoutSessionResponse>(getCreateBookingCheckoutSessionUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getCreateBookingCheckoutSessionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBookingCheckoutSession>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createBookingCheckoutSession>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['createBookingCheckoutSession'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBookingCheckoutSession>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  createBookingCheckoutSession(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateBookingCheckoutSessionMutationResult = NonNullable<Awaited<ReturnType<typeof createBookingCheckoutSession>>>
+
+    export type CreateBookingCheckoutSessionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a Stripe Checkout session to pay for an approved booking
+ */
+export const useCreateBookingCheckoutSession = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBookingCheckoutSession>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createBookingCheckoutSession>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getCreateBookingCheckoutSessionMutationOptions(options));
+    }
+
 export const getListOrdersUrl = (params?: ListOrdersParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -2215,6 +2806,76 @@ export const useUpdateOrder = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUpdateOrderMutationOptions(options));
+    }
+
+export const getCreateOrderCheckoutSessionUrl = (id: number,) => {
+
+
+
+
+  return `/api/orders/${id}/checkout-session`
+}
+
+/**
+ * @summary Create a Stripe Checkout session to pay for this order
+ */
+export const createOrderCheckoutSession = async (id: number, options?: RequestInit): Promise<CheckoutSessionResponse> => {
+
+  return customFetch<CheckoutSessionResponse>(getCreateOrderCheckoutSessionUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getCreateOrderCheckoutSessionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOrderCheckoutSession>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createOrderCheckoutSession>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['createOrderCheckoutSession'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createOrderCheckoutSession>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  createOrderCheckoutSession(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateOrderCheckoutSessionMutationResult = NonNullable<Awaited<ReturnType<typeof createOrderCheckoutSession>>>
+
+    export type CreateOrderCheckoutSessionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a Stripe Checkout session to pay for this order
+ */
+export const useCreateOrderCheckoutSession = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOrderCheckoutSession>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createOrderCheckoutSession>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getCreateOrderCheckoutSessionMutationOptions(options));
     }
 
 export const getGetDeliveryTrackingUrl = (orderId: number,) => {
@@ -4859,6 +5520,161 @@ export function useGetTopExperiences<TData = Awaited<ReturnType<typeof getTopExp
 
 
 
+
+export const getGetMostViewedUrl = (params?: GetMostViewedParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/analytics/most-viewed?${stringifiedParams}` : `/api/analytics/most-viewed`
+}
+
+/**
+ * @summary Get most-viewed products/experiences/packages by tracked page views
+ */
+export const getMostViewed = async (params?: GetMostViewedParams, options?: RequestInit): Promise<MostViewedItem[]> => {
+
+  return customFetch<MostViewedItem[]>(getGetMostViewedUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMostViewedQueryKey = (params?: GetMostViewedParams,) => {
+    return [
+    `/api/analytics/most-viewed`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetMostViewedQueryOptions = <TData = Awaited<ReturnType<typeof getMostViewed>>, TError = ErrorType<unknown>>(params?: GetMostViewedParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMostViewed>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMostViewedQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMostViewed>>> = ({ signal }) => getMostViewed(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMostViewed>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMostViewedQueryResult = NonNullable<Awaited<ReturnType<typeof getMostViewed>>>
+export type GetMostViewedQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get most-viewed products/experiences/packages by tracked page views
+ */
+
+export function useGetMostViewed<TData = Awaited<ReturnType<typeof getMostViewed>>, TError = ErrorType<unknown>>(
+ params?: GetMostViewedParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMostViewed>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMostViewedQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getTrackAnalyticsEventUrl = () => {
+
+
+
+
+  return `/api/analytics/events`
+}
+
+/**
+ * @summary Record a lightweight view/interest event (no auth required)
+ */
+export const trackAnalyticsEvent = async (analyticsEventInput: AnalyticsEventInput, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getTrackAnalyticsEventUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      analyticsEventInput,)
+  }
+);}
+
+
+
+
+export const getTrackAnalyticsEventMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof trackAnalyticsEvent>>, TError,{data: BodyType<AnalyticsEventInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof trackAnalyticsEvent>>, TError,{data: BodyType<AnalyticsEventInput>}, TContext> => {
+
+const mutationKey = ['trackAnalyticsEvent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof trackAnalyticsEvent>>, {data: BodyType<AnalyticsEventInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  trackAnalyticsEvent(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TrackAnalyticsEventMutationResult = NonNullable<Awaited<ReturnType<typeof trackAnalyticsEvent>>>
+    export type TrackAnalyticsEventMutationBody = BodyType<AnalyticsEventInput>
+    export type TrackAnalyticsEventMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Record a lightweight view/interest event (no auth required)
+ */
+export const useTrackAnalyticsEvent = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof trackAnalyticsEvent>>, TError,{data: BodyType<AnalyticsEventInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof trackAnalyticsEvent>>,
+        TError,
+        {data: BodyType<AnalyticsEventInput>},
+        TContext
+      > => {
+      return useMutation(getTrackAnalyticsEventMutationOptions(options));
+    }
 
 export const getListDonationsUrl = () => {
 

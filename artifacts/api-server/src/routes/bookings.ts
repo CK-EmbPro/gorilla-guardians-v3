@@ -10,7 +10,10 @@ import {
 } from "@workspace/api-zod";
 import { createNotification, notifyAdmins } from "../lib/notificationHelper";
 import { sendEmail, emailTemplates } from "../lib/emailService";
+import { getStripeClient, isStripeConfigured } from "../lib/stripeService";
 import { randomBytes } from "crypto";
+
+const APP_URL = process.env.APP_URL ?? "https://gorillaguardians.rw";
 
 const router: IRouter = Router();
 
@@ -96,13 +99,16 @@ router.post("/bookings", async (req, res): Promise<void> => {
   const [exp] = await db.select().from(experiencesTable).where(eq(experiencesTable.id, parsed.data.experienceId));
   if (!exp) { res.status(404).json({ error: "Experience not found" }); return; }
 
+  // z.coerce.date() produces a Date object; Drizzle's PgDateString column expects YYYY-MM-DD string.
+  const dateStr = parsed.data.date.toISOString().split("T")[0];
+
   // Capacity validation
   const bookedResult = await db
     .select({ total: sum(bookingsTable.participants) })
     .from(bookingsTable)
     .where(and(
       eq(bookingsTable.experienceId, parsed.data.experienceId),
-      eq(bookingsTable.date, parsed.data.date),
+      eq(bookingsTable.date, dateStr),
       ne(bookingsTable.status, "cancelled"),
     ));
   const alreadyBooked = Number(bookedResult[0]?.total ?? 0);
@@ -123,7 +129,7 @@ router.post("/bookings", async (req, res): Promise<void> => {
     bookingReference,
     userId,
     experienceId: parsed.data.experienceId,
-    date: parsed.data.date,
+    date: dateStr,
     participants: parsed.data.participants,
     totalAmount,
     status: "pending",
@@ -144,14 +150,14 @@ router.post("/bookings", async (req, res): Promise<void> => {
     userId,
     type: "booking",
     title: "Booking Submitted!",
-    message: `Your booking for "${exp.title}" on ${parsed.data.date} has been submitted. Reference: ${bookingReference}`,
+    message: `Your booking for "${exp.title}" on ${dateStr} has been submitted. Reference: ${bookingReference}`,
     link: `/bookings/${booking.id}`,
   });
 
   await notifyAdmins({
     type: "booking",
     title: "New Booking",
-    message: `New booking ${bookingReference} for "${exp.title}" on ${parsed.data.date} (${parsed.data.participants} participant${parsed.data.participants !== 1 ? "s" : ""})`,
+    message: `New booking ${bookingReference} for "${exp.title}" on ${dateStr} (${parsed.data.participants} participant${parsed.data.participants !== 1 ? "s" : ""})`,
     link: `/admin/bookings`,
   });
 
@@ -165,7 +171,7 @@ router.post("/bookings", async (req, res): Promise<void> => {
       html: emailTemplates.bookingConfirmation({
         customerName: customer.name,
         experienceTitle: exp.title,
-        date: parsed.data.date,
+        date: dateStr,
         participants: parsed.data.participants,
         totalAmount,
         bookingId: booking.id,
@@ -282,17 +288,30 @@ router.patch("/bookings/:id", async (req, res): Promise<void> => {
           userId: booking.userId,
         }).catch(err => console.error("[bookings] email error:", err));
       } else if (parsed.data.status === "cancelled") {
+        // A "pending" booking being declined by an admin is a rejection (no payment was ever
+        // taken); a previously-approved/confirmed booking being cancelled is a true cancellation.
+        // These get distinct copy and a distinct email-log template tag.
+        const isRejection = prevBooking.status === "pending";
         sendEmail({
           to: customer.email,
           toName: customer.name,
-          subject: `Booking Cancelled: ${exp.title}`,
-          html: emailTemplates.bookingCancelled({
-            customerName: customer.name,
-            experienceTitle: exp.title,
-            date: booking.date,
-            bookingId: booking.id,
-          }),
-          template: "booking_cancelled",
+          subject: isRejection
+            ? `Booking Request Declined: ${exp.title}`
+            : `Booking Cancelled: ${exp.title}`,
+          html: isRejection
+            ? emailTemplates.bookingRejected({
+                customerName: customer.name,
+                experienceTitle: exp.title,
+                date: booking.date,
+                bookingId: booking.id,
+              })
+            : emailTemplates.bookingCancelled({
+                customerName: customer.name,
+                experienceTitle: exp.title,
+                date: booking.date,
+                bookingId: booking.id,
+              }),
+          template: isRejection ? "booking_rejected" : "booking_cancelled",
           userId: booking.userId,
         }).catch(err => console.error("[bookings] email error:", err));
       }
@@ -451,6 +470,44 @@ router.get("/bookings/:id/ticket", async (req, res): Promise<void> => {
     guide: rich.guide,
     issuedAt: new Date().toISOString(),
   });
+});
+
+// POST /bookings/:id/checkout-session — only once an admin has approved the booking, matching
+// the existing "no payment required until your booking is confirmed" UX.
+router.post("/bookings/:id/checkout-session", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  if (!isStripeConfigured()) { res.status(503).json({ error: "Payments are not configured yet. Set STRIPE_SECRET_KEY." }); return; }
+
+  const [booking] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, id));
+  if (!booking) { res.status(404).json({ error: "Booking not found" }); return; }
+  if (booking.status !== "approved" && booking.status !== "confirmed") {
+    res.status(400).json({ error: "Booking must be approved before it can be paid for" });
+    return;
+  }
+  if (booking.paymentStatus === "paid") { res.status(400).json({ error: "Booking is already paid" }); return; }
+
+  const [exp] = await db.select().from(experiencesTable).where(eq(experiencesTable.id, booking.experienceId));
+  if (!exp) { res.status(404).json({ error: "Experience not found" }); return; }
+
+  const session = await getStripeClient().checkout.sessions.create({
+    mode: "payment",
+    line_items: [{
+      price_data: {
+        currency: "usd",
+        product_data: { name: `${exp.title} — ${booking.participants} participant${booking.participants !== 1 ? "s" : ""} (${booking.date})` },
+        unit_amount: Math.round(Number(booking.totalAmount) * 100),
+      },
+      quantity: 1,
+    }],
+    success_url: `${APP_URL}/booking-success?bookingId=${booking.id}&paid=1`,
+    cancel_url: `${APP_URL}/bookings/${booking.id}?paymentCancelled=1`,
+    metadata: { kind: "booking", bookingId: String(booking.id) },
+  });
+
+  await db.update(bookingsTable).set({ stripeSessionId: session.id }).where(eq(bookingsTable.id, booking.id));
+
+  res.status(201).json({ url: session.url });
 });
 
 export default router;

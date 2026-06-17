@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRoute, Link } from "wouter";
 import { Star, ShoppingCart, Heart, ArrowLeft, Minus, Plus, MapPin, Package, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,12 +15,17 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { Textarea } from "@/components/ui/textarea";
 import { Link as WouterLink } from "wouter";
+import { trackEvent } from "@/lib/trackEvent";
 
 export default function ProductDetailPage() {
   const [, params] = useRoute("/products/:id");
   const id = Number(params?.id);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (id) trackEvent("view_product", id);
+  }, [id]);
 
   const { data: product, isLoading } = useGetProduct(id, { query: { enabled: !!id, queryKey: getGetProductQueryKey(id) } });
   const { data: reviews } = useListReviews({ productId: id, status: "approved" });

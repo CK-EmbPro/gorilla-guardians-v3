@@ -2,6 +2,7 @@ import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import TourAssistant from "@/components/TourAssistant";
 import { AuthProvider, useAuth, type UserRole } from "@/lib/auth";
 import { CartProvider } from "@/lib/cart";
 import { NotificationsProvider } from "@/lib/useNotifications";
@@ -9,12 +10,16 @@ import { NotificationsProvider } from "@/lib/useNotifications";
 // Public pages
 import HomePage from "@/pages/home";
 import LoginPage from "@/pages/login";
+import ForgotPasswordPage from "@/pages/forgot-password";
+import ResetPasswordPage from "@/pages/reset-password";
 import ProductsPage from "@/pages/products";
 import ProductDetailPage from "@/pages/product-detail";
 import ArtisansPage from "@/pages/artisans";
 import ArtisanDetailPage from "@/pages/artisan-detail";
 import ExperiencesPage from "@/pages/experiences";
 import ExperienceDetailPage from "@/pages/experience-detail";
+import PackagesPage from "@/pages/packages";
+import PackageDetailPage from "@/pages/package-detail";
 import CartPage from "@/pages/cart";
 import CheckoutPage from "@/pages/checkout";
 import ImpactPage from "@/pages/impact";
@@ -46,6 +51,7 @@ import AdminProducts from "@/pages/admin/products";
 import AdminAnalytics from "@/pages/admin/analytics";
 import AdminArtisans from "@/pages/admin/artisans";
 import AdminExperiences from "@/pages/admin/experiences";
+import AdminPackages from "@/pages/admin/packages";
 import AdminOrders from "@/pages/admin/orders";
 import AdminUsers from "@/pages/admin/users";
 import AdminReviews from "@/pages/admin/reviews";
@@ -113,12 +119,16 @@ function Router() {
       {/* Public */}
       <Route path="/" component={HomePage} />
       <Route path="/login" component={LoginPage} />
+      <Route path="/forgot-password" component={ForgotPasswordPage} />
+      <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/products" component={ProductsPage} />
       <Route path="/products/:id" component={ProductDetailPage} />
       <Route path="/artisans" component={ArtisansPage} />
       <Route path="/artisans/:id" component={ArtisanDetailPage} />
       <Route path="/experiences" component={ExperiencesPage} />
       <Route path="/experiences/:id" component={ExperienceDetailPage} />
+      <Route path="/packages" component={PackagesPage} />
+      <Route path="/packages/:id" component={PackageDetailPage} />
       <Route path="/stories" component={StoriesPage} />
       <Route path="/stories/:id" component={StoryDetailPage} />
       <Route path="/events" component={EventsPage} />
@@ -224,6 +234,9 @@ function Router() {
       <Route path="/admin/experiences">
         {() => <ProtectedRoute component={AdminExperiences} roles={["admin", "super_admin"]} />}
       </Route>
+      <Route path="/admin/packages">
+        {() => <ProtectedRoute component={AdminPackages} roles={["admin", "super_admin"]} />}
+      </Route>
       <Route path="/admin/orders">
         {() => <ProtectedRoute component={AdminOrders} roles={["admin", "super_admin", "staff"]} />}
       </Route>
@@ -281,6 +294,7 @@ function App() {
                 <Router />
               </WouterRouter>
               <Toaster />
+              <TourAssistant />
             </TooltipProvider>
           </NotificationsProvider>
         </CartProvider>

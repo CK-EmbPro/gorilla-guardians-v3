@@ -13,6 +13,7 @@ export const emailLogsTable = pgTable("email_logs", {
   providerId: text("provider_id"),
   errorMessage: text("error_message"),
   metadata: text("metadata"),
+  html: text("html"),
   sentAt: timestamp("sent_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

@@ -32,6 +32,7 @@ interface EmailStats {
   failed: number;
   skipped: number;
   pending: number;
+  resendConfigured: boolean;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
@@ -90,6 +91,12 @@ export default function AdminEmailLogs() {
     { label: "Skipped (no API key)", value: stats.skipped, icon: AlertCircle, color: "text-gray-500" },
   ] : [];
 
+  const deliveryStatusBadge = stats ? (
+    stats.resendConfigured
+      ? { label: "Email Delivery: Enabled", className: "bg-green-100 text-green-800 border-green-200" }
+      : { label: "Email Delivery: Disabled", className: "bg-amber-100 text-amber-800 border-amber-200" }
+  ) : null;
+
   return (
     <div className="flex min-h-screen bg-background">
       <DashboardSidebar />
@@ -99,6 +106,11 @@ export default function AdminEmailLogs() {
             <div>
               <h1 className="font-serif text-3xl font-bold flex items-center gap-3">
                 <Mail className="w-7 h-7 text-primary" /> Email Logs
+                {deliveryStatusBadge && (
+                  <Badge className={cn("text-xs border font-medium", deliveryStatusBadge.className)}>
+                    {deliveryStatusBadge.label}
+                  </Badge>
+                )}
               </h1>
               <p className="text-muted-foreground mt-1">Monitor email delivery and resend failed messages.</p>
             </div>
@@ -126,7 +138,7 @@ export default function AdminEmailLogs() {
           )}
 
           {/* Notice about Resend */}
-          {stats && stats.skipped > 0 && stats.sent === 0 && (
+          {stats && !stats.resendConfigured && (
             <Card className="mb-6 border-amber-200 bg-amber-50/60">
               <CardContent className="p-4 flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />

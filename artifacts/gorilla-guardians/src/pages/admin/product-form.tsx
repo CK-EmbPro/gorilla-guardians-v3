@@ -15,6 +15,7 @@ import {
   useListArtisans,
   useListCategories,
   getListProductsQueryKey,
+  getGetProductQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -53,7 +54,7 @@ export default function ProductFormPage({ productId }: ProductFormPageProps) {
 
   const { data: existing, isLoading: loadingProduct } = useGetProduct(
     productId!,
-    { query: { enabled: !!productId } }
+    { query: { enabled: !!productId, queryKey: getGetProductQueryKey(productId!) } }
   );
   const { data: artisansData } = useListArtisans({ limit: 100 });
   const { data: categoriesData } = useListCategories();

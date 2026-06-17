@@ -65,7 +65,7 @@ export default function ArtisanMessagesPage() {
     const sent = text;
     setText("");
     sendMessage.mutate(
-      { data: { conversationId: selectedConv, content: sent }, params: { userId: user?.id } as any },
+      { data: { conversationId: selectedConv, content: sent } },
       {
         onSuccess: () => {
           setLocalMessages(prev => prev.filter(m => m.id !== optimistic.id));

@@ -16,4 +16,8 @@ export interface FeedbackInput {
      * @maximum 5
      */
   rating?: number;
+  /** Submitter name, for unauthenticated contact-form submissions only. */
+  guestName?: string;
+  /** Submitter email, for unauthenticated contact-form submissions only. */
+  guestEmail?: string;
 }
