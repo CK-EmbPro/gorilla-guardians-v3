@@ -11,7 +11,7 @@ services:
     # Start: run the compiled output
     startCommand: "pnpm --filter @workspace/api-server run start"
 
-    healthCheckPath: /api/health
+    healthCheckPath: /api/healthz
 
     envVars:
       - key: ENABLE_EXPERIMENTAL_COREPACK
