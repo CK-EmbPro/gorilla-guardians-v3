@@ -9,48 +9,6 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { useToast } from "@/hooks/use-toast";
 
-const DEMO_EVENTS: Record<number, any> = {
-  1: {
-    id: 1,
-    title: "Umuganura Harvest Festival",
-    type: "festival",
-    description: "Rwanda's traditional harvest festival at Gorilla Guardians Village. Traditional dances, music, food, and artisan showcase. Join hundreds of community members and international visitors to celebrate the harvest and honor the artisans who sustain this village.",
-    startDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-    endDate: new Date(Date.now() + 32 * 24 * 60 * 60 * 1000).toISOString(),
-    location: "Musanze, Rwanda",
-    isOnline: false,
-    image: null,
-    highlights: ["Traditional Intore dance performances", "Artisan market with 50+ makers", "Rwandan feast with local ingredients", "Gorilla conservation talk", "Basket weaving demonstration"],
-    capacity: 200,
-  },
-  2: {
-    id: 2,
-    title: "Virtual Artisan Showcase: Meet the Makers",
-    type: "exhibition",
-    description: "Live online event with Gorilla Guardians artisans. Watch live craft demonstrations, ask questions directly to the makers, place custom orders, and hear the stories behind each piece. A unique opportunity to connect with Rwandan artisans from anywhere in the world.",
-    startDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-    endDate: null,
-    location: null,
-    isOnline: true,
-    image: null,
-    highlights: ["Live basket weaving demonstration", "Imigongo painting session", "Wood carving Q&A with Emmanuel", "Custom order consultation", "Conservation impact update"],
-    capacity: 500,
-  },
-  3: {
-    id: 3,
-    title: "Imigongo Exhibition: Patterns of Rwanda",
-    type: "exhibition",
-    description: "Curated exhibition of contemporary Imigongo art featuring 25 artists from across Rwanda. Opening night reception with traditional music and Rwandan cuisine. The exhibition explores how ancient geometric traditions are being reimagined by a new generation of artists.",
-    startDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
-    endDate: new Date(Date.now() + 67 * 24 * 60 * 60 * 1000).toISOString(),
-    location: "Kigali Convention Centre, Rwanda",
-    isOnline: false,
-    image: null,
-    highlights: ["25 contemporary Imigongo artists", "Opening night reception", "Artist talks and workshops", "Collector preview evening", "Cultural heritage panel discussion"],
-    capacity: 300,
-  },
-};
-
 const TYPE_COLORS: Record<string, string> = {
   festival: "bg-accent/20 text-amber-800",
   exhibition: "bg-blue-100 text-blue-800",
@@ -62,8 +20,9 @@ export default function EventDetailPage() {
   const id = Number(params?.id);
   const { toast } = useToast();
 
-  const { data: event, isLoading } = useGetEvent(id, { query: { enabled: !!id, queryKey: getGetEventQueryKey(id) } });
-  const resolvedEvent = (event as any) ?? DEMO_EVENTS[id] ?? null;
+  const { data: event, isLoading, isError, error } = useGetEvent(id, { query: { enabled: !!id, queryKey: getGetEventQueryKey(id) } });
+  if (isError) console.error("[EventDetail] API error", error);
+  const resolvedEvent = (event as any) ?? null;
 
   const handleRegister = () => {
     toast({

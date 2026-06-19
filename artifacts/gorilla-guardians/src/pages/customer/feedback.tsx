@@ -18,23 +18,20 @@ const FEEDBACK_STATUS_COLORS: Record<string, string> = {
   resolved: "bg-green-100 text-green-800",
 };
 
-const demoFeedback = [
-  { id: 1, type: "suggestion", subject: "Add more basket varieties", message: "Would love to see more coiled basket designs.", status: "open", createdAt: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString() },
-  { id: 2, type: "compliment", subject: "Amazing packaging!", message: "The eco-friendly packaging was beautiful. Loved the handwritten note.", status: "resolved", createdAt: new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString() },
-];
-
 export default function CustomerFeedbackPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { data: feedbackData, refetch } = useListFeedback({ status: undefined });
+  const { data: feedbackData, refetch, isError, error } = useListFeedback({ status: undefined });
   const submitFeedback = useSubmitFeedback();
+
+  if (isError) console.error("[CustomerFeedback] API error", error);
 
   const [type, setType] = useState("suggestion");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
-  const feedbackList = Array.isArray(feedbackData) ? feedbackData : demoFeedback;
+  const feedbackList = Array.isArray(feedbackData) ? feedbackData : [];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

@@ -25,7 +25,7 @@ export default function ProductsPage() {
   const [page, setPage] = useState(1);
 
   const { data: categories } = useListCategories();
-  const { data: productsData, isLoading } = useListProducts({
+  const { data: productsData, isLoading, isError, error } = useListProducts({
     search: search || undefined,
     categoryId: categoryId !== "all" ? Number(categoryId) : undefined,
     minPrice: priceRange[0] || undefined,
@@ -36,16 +36,10 @@ export default function ProductsPage() {
 
   const { addToCart } = useCart();
 
-  const DEMO_PRODUCTS = [
-    { id: 1, name: "Imigongo Triangle Panel", price: 125, discountPrice: null, images: [], artisan: { name: "Alphonsine Umubyeyi" }, averageRating: 4.9, reviewCount: 23, stock: 5, featured: true },
-    { id: 2, name: "Peace Basket — Sunrise", price: 85, discountPrice: 70, images: [], artisan: { name: "Celestine Mukamana" }, averageRating: 5.0, reviewCount: 41, stock: 12, featured: true },
-    { id: 3, name: "Gorilla Family Sculpture", price: 280, discountPrice: null, images: [], artisan: { name: "Emmanuel Nkurunziza" }, averageRating: 4.8, reviewCount: 15, stock: 3, featured: false },
-    { id: 4, name: "Beaded Necklace", price: 45, discountPrice: 35, images: [], artisan: { name: "Celestine Mukamana" }, averageRating: 4.7, reviewCount: 38, stock: 20, featured: false },
-  ];
+  if (isError) console.error("[Products] API error", error);
 
-  const apiProducts = productsData?.products ?? [];
-  const products = apiProducts.length > 0 ? apiProducts : DEMO_PRODUCTS;
-  const total = products.length;
+  const products = productsData?.products ?? [];
+  const total = productsData?.total ?? 0;
   const totalPages = productsData?.totalPages ?? 1;
   const catList = Array.isArray(categories) ? categories : [];
 

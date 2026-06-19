@@ -28,11 +28,6 @@ export default function CustomerDashboard() {
   const wishlistItems = Array.isArray(wishlist) ? wishlist : [];
   const unreadNotifs = Array.isArray(notifications) ? notifications : [];
 
-  // Demo data if API returns empty
-  const demoOrders = orders.length > 0 ? orders : [
-    { id: 1001, status: "shipped", total: 210, createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), items: [{ productName: "Imigongo Triangle Panel" }] },
-    { id: 1002, status: "pending", total: 85, createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), items: [{ productName: "Peace Basket" }] },
-  ];
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -48,7 +43,7 @@ export default function CustomerDashboard() {
           {/* Stats */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {[
-              { icon: ShoppingBag, label: "Total Orders", value: demoOrders.length, href: "/customer/orders", color: "bg-primary/10" },
+              { icon: ShoppingBag, label: "Total Orders", value: orders.length, href: "/customer/orders", color: "bg-primary/10" },
               { icon: Calendar, label: "Bookings", value: bookingList.length, href: "/customer/bookings", color: "bg-secondary/10" },
               { icon: Heart, label: "Wishlist", value: wishlistItems.length, href: "/customer/wishlist", color: "bg-red-50" },
               { icon: Bell, label: "Notifications", value: unreadNotifs.length, href: "/customer/notifications", color: "bg-accent/10" },
@@ -77,13 +72,13 @@ export default function CustomerDashboard() {
                 </Link>
               </CardHeader>
               <CardContent>
-                {demoOrders.length === 0 ? (
+                {orders.length === 0 ? (
                   <div className="text-center py-6 text-muted-foreground text-sm">
                     No orders yet. <Link href="/products" className="text-primary hover:underline">Start shopping</Link>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {demoOrders.map((order: any) => (
+                    {orders.map((order: any) => (
                       <Link key={order.id} href={`/customer/orders/${order.id}`}>
                         <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" data-testid={`row-order-${order.id}`}>
                           <div className="flex items-center gap-3">

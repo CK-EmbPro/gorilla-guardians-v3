@@ -13,16 +13,10 @@ const TYPES = ["all", "artisan", "culture", "conservation"];
 
 export default function StoriesPage() {
   const [type, setType] = useState("all");
-  const { data: stories, isLoading } = useListStories({ type: type !== "all" ? type : undefined });
+  const { data: stories, isLoading, isError, error } = useListStories({ type: type !== "all" ? type : undefined });
+  if (isError) console.error("[Stories] API error", error);
   const storyList = Array.isArray(stories) ? stories : [];
-
-  const demoStories = [
-    { id: 1, title: "From Poacher to Protector: Celestine's Story", type: "artisan", excerpt: "Celestine Mukamana once helped set snares in Volcanoes National Park. Today, her woven baskets fund the park's conservation.", tags: ["conservation", "artisan", "baskets"], createdAt: new Date().toISOString() },
-    { id: 2, title: "The Geometry of Memory: Understanding Imigongo", type: "culture", excerpt: "Imigongo art's bold geometric patterns have decorated Rwandan homes for three centuries. Here's what the patterns mean.", tags: ["culture", "imigongo", "art", "history"], createdAt: new Date().toISOString() },
-    { id: 3, title: "47 Countries, 200 Families: The Numbers Behind the Mission", type: "conservation", excerpt: "Behind every product sold through Gorilla Guardians Village is a data point in a conservation success story.", tags: ["impact", "conservation", "mission"], createdAt: new Date().toISOString() },
-  ];
-  const displayStories = storyList.length > 0 ? storyList : demoStories;
-  const filtered = type === "all" ? displayStories : displayStories.filter((s: any) => s.type === type);
+  const filtered = type === "all" ? storyList : storyList.filter((s: any) => s.type === type);
 
   return (
     <div className="min-h-screen bg-background">
@@ -65,6 +59,10 @@ export default function StoriesPage() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-muted-foreground">No stories found.</p>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">

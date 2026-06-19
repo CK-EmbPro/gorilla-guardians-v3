@@ -18,11 +18,6 @@ export default function ArtisanDashboard() {
   const reviewList = Array.isArray(reviews) ? reviews : [];
   const avgRating = reviewList.length > 0 ? (reviewList.reduce((s: number, r: any) => s + r.rating, 0) / reviewList.length).toFixed(1) : null;
 
-  const demoEarnings = Array.from({ length: 12 }, (_, i) => ({
-    month: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][i],
-    earnings: Math.floor(Math.random() * 800) + 200,
-  }));
-
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <DashboardSidebar />
@@ -36,9 +31,9 @@ export default function ArtisanDashboard() {
           {/* Stats */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {[
-              { icon: Package, label: "My Products", value: products.length || 8, color: "bg-primary/10", href: "/artisan/products" },
-              { icon: DollarSign, label: "Total Earnings", value: "$4,820", color: "bg-secondary/10", href: "/artisan/earnings" },
-              { icon: Star, label: "Avg Rating", value: avgRating ?? "4.8", color: "bg-accent/10", href: null },
+              { icon: Package, label: "My Products", value: products.length, color: "bg-primary/10", href: "/artisan/products" },
+              { icon: DollarSign, label: "Total Earnings", value: "—", color: "bg-secondary/10", href: "/artisan/earnings" },
+              { icon: Star, label: "Avg Rating", value: avgRating ?? "—", color: "bg-accent/10", href: null },
               { icon: MessageSquare, label: "Messages", value: 3, color: "bg-blue-50", href: "/artisan/messages" },
             ].map(({ icon: Icon, label, value, color, href }) => (
               <Card key={label} className={`border-border ${href ? "hover:shadow-md cursor-pointer" : ""} transition-shadow`}>
@@ -56,18 +51,12 @@ export default function ArtisanDashboard() {
           {/* Earnings chart */}
           <Card className="mb-6">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">Monthly Earnings (2025)</CardTitle>
+              <CardTitle className="text-base">Monthly Earnings</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={demoEarnings}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(42 20% 90%)" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(val: number) => [`$${val}`, "Earnings"]} />
-                  <Line type="monotone" dataKey="earnings" stroke="hsl(152 42% 28%)" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
+              <div className="flex items-center justify-center h-[220px] text-sm text-muted-foreground">
+                No earnings data yet. <a href="/artisan/earnings" className="text-primary ml-1 underline">View detailed earnings</a>
+              </div>
             </CardContent>
           </Card>
 

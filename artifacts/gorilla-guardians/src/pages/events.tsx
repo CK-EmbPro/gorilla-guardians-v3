@@ -10,15 +10,9 @@ import Footer from "@/components/layout/Footer";
 
 export default function EventsPage() {
   const [, navigate] = useLocation();
-  const { data: events, isLoading } = useListEvents({ upcoming: true });
+  const { data: events, isLoading, isError, error } = useListEvents({ upcoming: true });
+  if (isError) console.error("[Events] API error", error);
   const eventList = Array.isArray(events) ? events : [];
-
-  const demoEvents = [
-    { id: 1, title: "Umuganura Harvest Festival", type: "festival", description: "Rwanda's traditional harvest festival at Gorilla Guardians Village. Traditional dances, music, food, and artisan showcase.", startDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), endDate: new Date(Date.now() + 32 * 24 * 60 * 60 * 1000).toISOString(), location: "Musanze, Rwanda", isOnline: false, image: null },
-    { id: 2, title: "Virtual Artisan Showcase: Meet the Makers", type: "exhibition", description: "Live online event with Gorilla Guardians artisans. Watch demonstrations, ask questions, place custom orders.", startDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), endDate: null, location: null, isOnline: true, image: null },
-    { id: 3, title: "Imigongo Exhibition: Patterns of Rwanda", type: "exhibition", description: "Curated exhibition of contemporary Imigongo art. Opening night reception with traditional music and food.", startDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(), endDate: new Date(Date.now() + 67 * 24 * 60 * 60 * 1000).toISOString(), location: "Kigali Convention Centre, Rwanda", isOnline: false, image: null },
-  ];
-  const displayEvents = eventList.length > 0 ? eventList : demoEvents;
 
   const TYPE_COLORS: Record<string, string> = {
     festival: "bg-accent/20 text-amber-800",
@@ -42,8 +36,12 @@ export default function EventsPage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-6">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => <Card key={i} className="h-40 animate-pulse" />)
+        ) : eventList.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-muted-foreground">No upcoming events.</p>
+          </div>
         ) : (
-          displayEvents.map((event: any, i) => (
+          eventList.map((event: any, i) => (
             <motion.div key={event.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}>
               <Card className="overflow-hidden hover:shadow-lg transition-shadow border-border" data-testid={`card-event-${event.id}`}>
                 <CardContent className="p-6">

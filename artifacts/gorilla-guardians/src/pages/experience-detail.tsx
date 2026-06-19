@@ -26,7 +26,7 @@ export default function ExperienceDetailPage() {
     if (id) trackEvent("view_experience", id);
   }, [id]);
 
-  const { data: experience, isLoading } = useGetExperience(id, { query: { enabled: !!id, queryKey: getGetExperienceQueryKey(id) } });
+  const { data: experience, isLoading, isError, error } = useGetExperience(id, { query: { enabled: !!id, queryKey: getGetExperienceQueryKey(id) } });
   const createBooking = useCreateBooking();
 
   const { user } = useAuth();
@@ -44,14 +44,9 @@ export default function ExperienceDetailPage() {
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const [reviewHover, setReviewHover] = useState(0);
 
-  const DEMO_EXPERIENCES: Record<number, any> = {
+  if (isError) console.error("[ExperienceDetail] API error", error);
 
-    1: { id: 1, title: "Gorilla Trek & Village Visit", type: "tour", price: 650, duration: "Full day", capacity: 8, images: [], averageRating: 5.0, reviewCount: 42, description: "Begin your day with an early morning trek into Volcanoes National Park with expert guides. Spend time with a habituated gorilla family, observing them in their natural habitat, then visit the Gorilla Guardians artisan village for lunch, craft demonstrations, and cultural exchange.", meetingPoint: "Kinigi Gate, Musanze", includedItems: ["Expert gorilla guide", "Park fees", "Village lunch", "Craft workshop", "Conservation briefing"], cancellationPolicy: "Full refund if cancelled 14+ days before. 50% refund 7–13 days before. No refund within 7 days.", difficultyLevel: "moderate" },
-    2: { id: 2, title: "Artisan Homestay Experience", type: "homestay", price: 120, duration: "Per night", capacity: 2, images: [], averageRating: 4.9, reviewCount: 28, description: "Stay with an artisan family in Musanze and experience authentic Rwandan village life. Share meals, learn traditional crafts, hear family stories, and wake up to stunning views of the Virunga volcanoes. A portion of every stay goes directly to conservation efforts.", meetingPoint: "Musanze Village Center", includedItems: ["Accommodation", "Breakfast & dinner", "Craft lesson", "Farm tour", "Cultural exchange"], cancellationPolicy: "Full refund if cancelled 7+ days before. No refund within 7 days.", difficultyLevel: "easy" },
-    3: { id: 3, title: "Imigongo Painting Workshop", type: "workshop", price: 85, duration: "3 hours", capacity: 12, images: [], averageRating: 4.8, reviewCount: 67, description: "Learn the ancient art of Imigongo from master artist Alphonsine Umubyeyi. Using natural earth pigments and traditional techniques, you'll create your own geometric panel to take home. No artistic experience required — this workshop welcomes all skill levels.", meetingPoint: "Gorilla Guardians Village Workshop", includedItems: ["All materials", "Master artist instruction", "Completed artwork to take home", "Refreshments", "Conservation story session"], cancellationPolicy: "Full refund if cancelled 48+ hours before. No refund within 48 hours.", difficultyLevel: "easy" },
-  };
-
-  const resolvedExperience = (experience as any) ?? DEMO_EXPERIENCES[id] ?? null;
+  const resolvedExperience = (experience as any) ?? null;
   const exp = resolvedExperience;
 
   const handleBook = () => {

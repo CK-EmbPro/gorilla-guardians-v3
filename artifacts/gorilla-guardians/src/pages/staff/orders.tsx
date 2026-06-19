@@ -19,14 +19,6 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-red-100 text-red-800",
 };
 
-const demoOrders = [
-  { id: 1, customer: { name: "Sarah Johnson" }, total: 210, status: "pending", createdAt: new Date(Date.now() - 1 * 24 * 3600000).toISOString(), items: [{ product: { name: "Imigongo Panel" }, quantity: 1 }] },
-  { id: 2, customer: { name: "Pierre Mbeki" }, total: 85, status: "processing", createdAt: new Date(Date.now() - 2 * 24 * 3600000).toISOString(), items: [{ product: { name: "Peace Basket" }, quantity: 1 }] },
-  { id: 3, customer: { name: "Amira Khalid" }, total: 450, status: "shipped", createdAt: new Date(Date.now() - 3 * 24 * 3600000).toISOString(), items: [{ product: { name: "Wood Sculpture" }, quantity: 2 }] },
-  { id: 4, customer: { name: "James Lee" }, total: 125, status: "delivered", createdAt: new Date(Date.now() - 5 * 24 * 3600000).toISOString(), items: [{ product: { name: "Ceramic Pot" }, quantity: 1 }] },
-  { id: 5, customer: { name: "Nina Schmidt" }, total: 65, status: "pending", createdAt: new Date(Date.now() - 6 * 3600000).toISOString(), items: [{ product: { name: "Beaded Necklace" }, quantity: 3 }] },
-];
-
 export default function StaffOrdersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -35,10 +27,11 @@ export default function StaffOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [newStatus, setNewStatus] = useState("");
 
-  const { data: ordersData, isLoading } = useListOrders({ status: statusFilter !== "all" ? statusFilter as any : undefined, limit: 50 });
+  const { data: ordersData, isLoading, isError, error } = useListOrders({ status: statusFilter !== "all" ? statusFilter as any : undefined, limit: 50 });
+  if (isError) console.error("[StaffOrders] API error", error);
   const updateOrder = useUpdateOrder();
 
-  const orders = ordersData?.orders ?? demoOrders;
+  const orders = ordersData?.orders ?? [];
   const filtered = orders.filter((o: any) =>
     (!search || `ORD-${String(o.id).padStart(3,"0")} ${o.customer?.name ?? ""}`.toLowerCase().includes(search.toLowerCase()))
   );
@@ -103,6 +96,9 @@ export default function StaffOrdersPage() {
                     </tr>
                   </thead>
                   <tbody>
+                    {filtered.length === 0 && (
+                      <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">No orders found.</td></tr>
+                    )}
                     {filtered.map((o: any) => (
                       <tr key={o.id} className="border-b border-border hover:bg-muted/20 transition-colors" data-testid={`row-staff-order-${o.id}`}>
                         <td className="px-4 py-3 font-medium text-primary">ORD-{String(o.id).padStart(3,"0")}</td>

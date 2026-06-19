@@ -41,28 +41,13 @@ export default function HomePage() {
   const storyList = Array.isArray(stories) ? stories.slice(0, 3) : [];
   const eventList = Array.isArray(events) ? events.slice(0, 3) : [];
 
-  // Fallback demo products if API empty
-  const demoProducts = products.length > 0 ? products : [
-    { id: 1, name: "Imigongo Triangle Panel", price: 125, images: [], artisan: { name: "Alphonsine Umubyeyi" }, averageRating: 4.9, reviewCount: 23 },
-    { id: 2, name: "Peace Basket — Sunrise", price: 85, discountPrice: 70, images: [], artisan: { name: "Celestine Mukamana" }, averageRating: 5.0, reviewCount: 41 },
-    { id: 3, name: "Gorilla Family Sculpture", price: 280, images: [], artisan: { name: "Emmanuel Nkurunziza" }, averageRating: 4.8, reviewCount: 15 },
-    { id: 4, name: "Beaded Necklace", price: 45, discountPrice: 35, images: [], artisan: { name: "Celestine Mukamana" }, averageRating: 4.7, reviewCount: 38 },
-  ];
-
-  const demoArtisans = artisans.length > 0 ? artisans : [
-    { id: 1, name: "Celestine Mukamana", biography: "Master basket weaver and conservation ambassador from Musanze.", skills: ["basket weaving", "imigongo art"], photo: null, productCount: 12, averageRating: 4.9 },
-    { id: 2, name: "Emmanuel Nkurunziza", biography: "Third-generation woodcarver who learned his craft from his grandfather.", skills: ["wood carving", "sculpture"], photo: null, productCount: 8, averageRating: 4.8 },
-    { id: 3, name: "Alphonsine Umubyeyi", biography: "Award-winning Imigongo artist with 30 years of experience.", skills: ["imigongo painting"], photo: null, productCount: 15, averageRating: 5.0 },
-    { id: 4, name: "Jean-Pierre Nshimiyimana", biography: "Ceramics master who has trained over 30 youth artisans.", skills: ["pottery", "ceramics"], photo: null, productCount: 10, averageRating: 4.7 },
-  ];
-
   const impactData = impact ?? {
-    familiesSupported: 200,
-    artisansEmpowered: 200,
-    countriesReached: 47,
-    totalOrders: 3840,
-    conservationAmbassadors: 85,
-    treesProtected: 12500,
+    familiesSupported: 0,
+    artisansEmpowered: 0,
+    countriesReached: 0,
+    totalOrders: 0,
+    conservationAmbassadors: 0,
+    treesProtected: 0,
   };
 
   return (
@@ -111,11 +96,11 @@ export default function HomePage() {
                 </div>
                 {/* Floating stats */}
                 <div className="absolute -bottom-6 -left-6 bg-white rounded-xl p-4 shadow-xl">
-                  <div className="text-2xl font-serif font-bold text-primary">200+</div>
+                  <div className="text-2xl font-serif font-bold text-primary">{impactData.familiesSupported}+</div>
                   <div className="text-xs text-muted-foreground">Artisan families</div>
                 </div>
                 <div className="absolute -top-6 -right-6 bg-accent rounded-xl p-4 shadow-xl">
-                  <div className="text-2xl font-serif font-bold text-accent-foreground">47</div>
+                  <div className="text-2xl font-serif font-bold text-accent-foreground">{impactData.countriesReached}</div>
                   <div className="text-xs text-accent-foreground/80">Countries</div>
                 </div>
               </div>
@@ -137,6 +122,7 @@ export default function HomePage() {
       </section>
 
       {/* Featured Products */}
+      {products.length > 0 && (
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="flex items-end justify-between mb-10">
           <div>
@@ -151,7 +137,7 @@ export default function HomePage() {
           </Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {demoProducts.slice(0, 4).map((product: any, i) => (
+          {products.slice(0, 4).map((product: any, i) => (
             <motion.div
               key={product.id}
               initial={{ opacity: 0, y: 20 }}
@@ -206,6 +192,7 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+      )}
 
       {/* Mission Banner */}
       <section className="bg-secondary/10 py-20">
@@ -236,6 +223,7 @@ export default function HomePage() {
       </section>
 
       {/* Meet the Artisans */}
+      {artisans.length > 0 && (
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="flex items-end justify-between mb-10">
           <div>
@@ -248,7 +236,7 @@ export default function HomePage() {
           </Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {demoArtisans.slice(0, 4).map((artisan: any, i) => (
+          {artisans.slice(0, 4).map((artisan: any, i) => (
             <motion.div
               key={artisan.id}
               initial={{ opacity: 0, y: 20 }}
@@ -284,8 +272,10 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+      )}
 
       {/* Experiences */}
+      {experiences.length > 0 && (
       <section className="bg-primary/5 py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-end justify-between mb-10">
@@ -299,11 +289,7 @@ export default function HomePage() {
             </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {(experiences.length > 0 ? experiences : [
-              { id: 1, title: "Gorilla Trek & Village Visit", type: "tour", price: 650, duration: "Full day", capacity: 8, images: [], averageRating: 5.0, reviewCount: 42 },
-              { id: 2, title: "Artisan Homestay Experience", type: "homestay", price: 120, duration: "Per night", capacity: 2, images: [], averageRating: 4.9, reviewCount: 28 },
-              { id: 3, title: "Imigongo Painting Workshop", type: "workshop", price: 85, duration: "3 hours", capacity: 12, images: [], averageRating: 4.8, reviewCount: 67 },
-            ]).slice(0, 3).map((exp: any, i) => (
+            {experiences.slice(0, 3).map((exp: any, i) => (
               <motion.div
                 key={exp.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -348,6 +334,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+      )}
 
       {/* Stories */}
       {storyList.length > 0 && (

@@ -14,28 +14,30 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-red-100 text-red-800",
 };
 
-const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const monthlyData = months.map((month, i) => ({
-  month,
-  earnings: [420, 380, 560, 490, 720, 650, 810, 740, 620, 880, 950, 1120][i],
-  orders: [8, 7, 11, 9, 14, 12, 16, 15, 12, 17, 19, 22][i],
-}));
-
-const demoSales = [
-  { id: "ORD-001", product: "Imigongo Triangle Panel", buyer: "Sarah J.", amount: 125, status: "delivered", date: "2026-05-10" },
-  { id: "ORD-002", product: "Peace Basket — Sunrise", buyer: "Pierre M.", amount: 70, status: "shipped", date: "2026-05-14" },
-  { id: "ORD-003", product: "Beaded Necklace Set", buyer: "Amira K.", amount: 45, status: "processing", date: "2026-05-18" },
-  { id: "ORD-004", product: "Kente Table Runner", buyer: "James L.", amount: 65, status: "delivered", date: "2026-05-08" },
-  { id: "ORD-005", product: "Imigongo Triangle Panel", buyer: "Nina S.", amount: 125, status: "pending", date: "2026-05-19" },
-];
+const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 export default function ArtisanEarningsPage() {
   const { user } = useAuth();
-  const { data: ordersData } = useListOrders({ userId: user?.id ?? 4, limit: 10 });
-  const orders = ordersData?.orders ?? demoSales;
+  const { data: ordersData, isError, error } = useListOrders({ userId: user?.id ?? 4, limit: 100 });
+  if (isError) console.error("[ArtisanEarnings] API error", error);
+  const orders = ordersData?.orders ?? [];
 
-  const totalEarnings = monthlyData.reduce((s, m) => s + m.earnings, 0);
-  const currentMonth = monthlyData[new Date().getMonth()];
+  const monthlyMap: Record<string, { month: string; earnings: number; orders: number }> = {};
+  orders.forEach((o: any) => {
+    const d = new Date(o.createdAt);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    if (!monthlyMap[key]) monthlyMap[key] = { month: MONTH_NAMES[d.getMonth()], earnings: 0, orders: 0 };
+    monthlyMap[key].earnings += Number(o.total) || 0;
+    monthlyMap[key].orders += 1;
+  });
+  const monthlyData = Object.values(monthlyMap);
+
+  const totalEarnings = orders.reduce((s: number, o: any) => s + (Number(o.total) || 0), 0);
+  const now = new Date();
+  const thisMonthEarnings = orders
+    .filter((o: any) => { const d = new Date(o.createdAt); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); })
+    .reduce((s: number, o: any) => s + (Number(o.total) || 0), 0);
+  const avgOrderValue = orders.length > 0 ? Math.round(totalEarnings / orders.length) : 0;
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -47,13 +49,12 @@ export default function ArtisanEarningsPage() {
             <p className="text-sm text-muted-foreground mt-1">Your sales and revenue overview.</p>
           </div>
 
-          {/* KPIs */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {[
               { icon: DollarSign, label: "Total Earnings", value: `$${totalEarnings.toLocaleString()}`, sub: "All time", color: "bg-primary/10" },
-              { icon: TrendingUp, label: "This Month", value: `$${currentMonth.earnings}`, sub: "+15% vs last", color: "bg-green-50" },
-              { icon: ShoppingBag, label: "Total Orders", value: monthlyData.reduce((s, m) => s + m.orders, 0).toString(), sub: "All time", color: "bg-secondary/10" },
-              { icon: Package, label: "Avg Order Value", value: `$${Math.round(totalEarnings / monthlyData.reduce((s, m) => s + m.orders, 0))}`, sub: "Per sale", color: "bg-accent/10" },
+              { icon: TrendingUp, label: "This Month", value: `$${thisMonthEarnings.toLocaleString()}`, sub: "Current month", color: "bg-green-50" },
+              { icon: ShoppingBag, label: "Total Orders", value: orders.length.toString(), sub: "All time", color: "bg-secondary/10" },
+              { icon: Package, label: "Avg Order Value", value: `$${avgOrderValue}`, sub: "Per sale", color: "bg-accent/10" },
             ].map(({ icon: Icon, label, value, sub, color }) => (
               <Card key={label} className="border-border">
                 <CardContent className="p-5">
@@ -68,46 +69,52 @@ export default function ArtisanEarningsPage() {
             ))}
           </div>
 
-          {/* Charts */}
           <div className="grid lg:grid-cols-2 gap-6 mb-8">
             <Card className="border-border">
-              <CardHeader><CardTitle className="text-base">Monthly Earnings (2026)</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">Monthly Earnings</CardTitle></CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={220}>
-                  <AreaChart data={monthlyData}>
-                    <defs>
-                      <linearGradient id="earningsGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(152 42% 28%)" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="hsl(152 42% 28%)" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(42 20% 90%)" />
-                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip formatter={(v: number) => [`$${v}`, "Earnings"]} />
-                    <Area type="monotone" dataKey="earnings" stroke="hsl(152 42% 28%)" fill="url(#earningsGrad)" strokeWidth={2} />
-                  </AreaChart>
-                </ResponsiveContainer>
+                {monthlyData.length === 0 ? (
+                  <div className="flex items-center justify-center h-[220px] text-sm text-muted-foreground">No earnings data yet.</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <AreaChart data={monthlyData}>
+                      <defs>
+                        <linearGradient id="earningsGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(152 42% 28%)" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="hsl(152 42% 28%)" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(42 20% 90%)" />
+                      <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <Tooltip formatter={(v: number) => [`$${v}`, "Earnings"]} />
+                      <Area type="monotone" dataKey="earnings" stroke="hsl(152 42% 28%)" fill="url(#earningsGrad)" strokeWidth={2} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
 
             <Card className="border-border">
               <CardHeader><CardTitle className="text-base">Orders per Month</CardTitle></CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={monthlyData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(42 20% 90%)" />
-                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
-                    <Bar dataKey="orders" fill="hsl(43 90% 50%)" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                {monthlyData.length === 0 ? (
+                  <div className="flex items-center justify-center h-[220px] text-sm text-muted-foreground">No orders data yet.</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={monthlyData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(42 20% 90%)" />
+                      <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <Tooltip />
+                      <Bar dataKey="orders" fill="hsl(43 90% 50%)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Recent sales */}
           <Card className="border-border">
             <CardHeader><CardTitle className="text-base">Recent Sales</CardTitle></CardHeader>
             <CardContent className="p-0">
@@ -124,16 +131,19 @@ export default function ArtisanEarningsPage() {
                     </tr>
                   </thead>
                   <tbody>
+                    {orders.length === 0 && (
+                      <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">No sales yet.</td></tr>
+                    )}
                     {(orders as any[]).map((o: any, i) => (
                       <tr key={o.id ?? i} className="border-b border-border hover:bg-muted/20 transition-colors">
-                        <td className="px-4 py-3 font-medium text-primary">{o.id?.toString().startsWith("ORD") ? o.id : `ORD-${String(o.id).padStart(3,"0")}`}</td>
-                        <td className="px-4 py-3">{o.product ?? "Product"}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{o.buyer ?? o.customer?.name ?? "—"}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{o.date ? new Date(o.date).toLocaleDateString() : new Date(o.createdAt).toLocaleDateString()}</td>
+                        <td className="px-4 py-3 font-medium text-primary">ORD-{String(o.id).padStart(3,"0")}</td>
+                        <td className="px-4 py-3">{o.items?.[0]?.productName ?? o.items?.[0]?.product?.name ?? "—"}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{o.customer?.name ?? "—"}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{new Date(o.createdAt).toLocaleDateString()}</td>
                         <td className="px-4 py-3">
                           <Badge className={`text-xs ${STATUS_COLORS[o.status] ?? "bg-muted"}`}>{o.status}</Badge>
                         </td>
-                        <td className="px-4 py-3 text-right font-bold">${o.amount ?? o.total}</td>
+                        <td className="px-4 py-3 text-right font-bold">${o.total}</td>
                       </tr>
                     ))}
                   </tbody>

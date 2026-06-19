@@ -20,20 +20,15 @@ export default function ArtisanDetailPage() {
   const [donationAmount, setDonationAmount] = useState("25");
   const [donating, setDonating] = useState(false);
 
-  const { data: artisan, isLoading } = useGetArtisan(id, { query: { enabled: !!id, queryKey: getGetArtisanQueryKey(id) } });
+  const { data: artisan, isLoading, isError, error } = useGetArtisan(id, { query: { enabled: !!id, queryKey: getGetArtisanQueryKey(id) } });
   const { data: productsData } = useListProducts({ artisanId: id });
   const createDonation = useCreateDonation();
 
+  if (isError) console.error("[ArtisanDetail] API error", error);
+
   const products = productsData?.products ?? [];
 
-  const DEMO_ARTISANS: Record<number, any> = {
-    1: { id: 1, name: "Celestine Mukamana", biography: "Master basket weaver and conservation ambassador from Musanze. Celestine has been weaving traditional Agaseke peace baskets for over 20 years and teaches her craft to village youth.", skills: ["basket weaving", "imigongo art", "natural dyeing"], photo: null, productCount: 12, averageRating: 4.9, isConservationAmbassador: true, totalDonations: 1240, story: "Celestine grew up watching her grandmother weave peace baskets by firelight. Today she runs workshops for 15 young women in Musanze, ensuring the tradition lives on. Through Gorilla Guardians Village, her baskets now reach collectors in 30 countries." },
-    2: { id: 2, name: "Emmanuel Nkurunziza", biography: "Third-generation woodcarver who learned his craft from his grandfather. Emmanuel specializes in wildlife sculptures that celebrate the mountain gorillas of Volcanoes National Park.", skills: ["wood carving", "sculpture", "wildlife art"], photo: null, productCount: 8, averageRating: 4.8, isConservationAmbassador: false, totalDonations: 890, story: "Emmanuel's grandfather carved ceremonial objects for the royal court. His father taught him the same patience and precision. Today Emmanuel channels that heritage into wildlife sculptures that raise awareness for gorilla conservation." },
-    3: { id: 3, name: "Alphonsine Umubyeyi", biography: "Award-winning Imigongo artist with 30 years of experience creating geometric wall art using ancient Rwandan techniques and natural earth pigments.", skills: ["imigongo painting", "geometric art", "natural pigments"], photo: null, productCount: 15, averageRating: 5.0, isConservationAmbassador: true, totalDonations: 2100, story: "Alphonsine is recognized internationally for her Imigongo work, having exhibited in Paris, New York, and Nairobi. She returned to Musanze to teach 40 village women the craft, creating a sustainable income source for the community while keeping the tradition alive." },
-    4: { id: 4, name: "Jean-Pierre Nshimiyimana", biography: "Ceramics master who has trained over 30 youth artisans. Jean-Pierre combines traditional Rwandan pottery techniques with contemporary design for a global audience.", skills: ["pottery", "ceramics", "traditional craft"], photo: null, productCount: 10, averageRating: 4.7, isConservationAmbassador: false, totalDonations: 670, story: "Jean-Pierre discovered pottery at age 12 and has never stopped. His workshop in Musanze doubles as a training center where young men learn a trade and earn dignity through craft. He believes every bowl, every cup, carries the spirit of the hands that shaped it." },
-  };
-
-  const resolvedArtisan = (artisan as any) ?? DEMO_ARTISANS[id] ?? null;
+  const resolvedArtisan = (artisan as any) ?? null;
   const a = resolvedArtisan;
 
   const handleDonate = () => {

@@ -23,22 +23,13 @@ export default function ExperiencesPage() {
   const [type, setType] = useState("all");
   const [priceSort, setPriceSort] = useState("all");
 
-  const { data: expData, isLoading } = useListExperiences({
+  const { data: expData, isLoading, isError, error } = useListExperiences({
     type: type !== "all" ? type : undefined,
     limit: 20,
   });
+  if (isError) console.error("[Experiences] API error", error);
   const experiences = expData?.experiences ?? [];
-
-  const demoExperiences = [
-    { id: 1, title: "Gorilla Trek & Village Visit", type: "tour", price: 650, duration: "Full day (8 hours)", capacity: 8, images: [], averageRating: 5.0, reviewCount: 42, description: "Spend a morning tracking mountain gorillas in Volcanoes National Park, then visit the Gorilla Guardians artisan village.", includedItems: ["Gorilla permit", "Park fees", "Village lunch", "Craft workshop"] },
-    { id: 2, title: "Artisan Homestay Experience", type: "homestay", price: 120, duration: "Per night (min 2 nights)", capacity: 2, images: [], averageRating: 4.9, reviewCount: 28, description: "Live with a Gorilla Guardians artisan family for 2–3 nights. Share meals, learn crafts, experience authentic Rwandan life.", includedItems: ["Accommodation", "All meals", "Craft sessions"] },
-    { id: 3, title: "Imigongo Painting Workshop", type: "workshop", price: 85, duration: "3 hours", capacity: 12, images: [], averageRating: 4.8, reviewCount: 67, description: "Learn the ancient art of Imigongo from master artisan Alphonsine. Create your own panel to take home.", includedItems: ["All materials", "Instruction", "Artwork to take home"] },
-    { id: 4, title: "Traditional Rwandan Cooking Class", type: "cooking", price: 65, duration: "4 hours", capacity: 8, images: [], averageRating: 4.9, reviewCount: 89, description: "Cook a full traditional Rwandan feast alongside local women. Market visit included.", includedItems: ["Market visit", "All ingredients", "Recipe cards", "Lunch"] },
-    { id: 5, title: "Basket Weaving Masterclass", type: "workshop", price: 55, duration: "Half day (4 hours)", capacity: 10, images: [], averageRating: 4.7, reviewCount: 54, description: "Deep dive into Rwandan peace basket weaving with master weaver Celestine.", includedItems: ["All materials", "Pattern guide", "Partial basket to keep"] },
-  ];
-
-  const displayExps = experiences.length > 0 ? experiences : demoExperiences;
-  const filtered = type === "all" ? displayExps : displayExps.filter((e: any) => e.type === type);
+  const filtered = type === "all" ? experiences : experiences.filter((e: any) => e.type === type);
 
   return (
     <div className="min-h-screen bg-background">
@@ -102,6 +93,10 @@ export default function ExperiencesPage() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-muted-foreground">No experiences found.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

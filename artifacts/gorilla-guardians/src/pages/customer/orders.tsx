@@ -17,14 +17,9 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function CustomerOrdersPage() {
   const { user } = useAuth();
-  const { data: ordersData, isLoading } = useListOrders({ userId: user?.id, limit: 20 });
+  const { data: ordersData, isLoading, isError, error } = useListOrders({ userId: user?.id, limit: 20 });
+  if (isError) console.error("[CustomerOrders] API error", error);
   const orders = ordersData?.orders ?? [];
-
-  const demoOrders = [
-    { id: 1001, status: "shipped", total: 210, subtotal: 185, shippingCost: 25, createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), items: [{ productName: "Imigongo Triangle Panel", quantity: 1, price: 125 }, { productName: "Beaded Necklace", quantity: 1, price: 60 }], trackingNumber: "RW-TRK-001234", shippingCarrier: "DHL" },
-    { id: 1002, status: "pending", total: 85, subtotal: 85, shippingCost: 0, createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), items: [{ productName: "Peace Basket — Sunrise", quantity: 1, price: 85 }], trackingNumber: null, shippingCarrier: null },
-  ];
-  const displayOrders = orders.length > 0 ? orders : demoOrders;
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -36,7 +31,7 @@ export default function CustomerOrdersPage() {
             <div className="space-y-4">
               {Array.from({ length: 3 }).map((_, i) => <Card key={i} className="h-28 animate-pulse" />)}
             </div>
-          ) : displayOrders.length === 0 ? (
+          ) : orders.length === 0 ? (
             <div className="text-center py-20">
               <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h2 className="font-semibold text-lg mb-2">No orders yet</h2>
@@ -45,7 +40,7 @@ export default function CustomerOrdersPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {displayOrders.map((order: any) => (
+              {orders.map((order: any) => (
                 <Card key={order.id} className="border-border hover:shadow-md transition-shadow" data-testid={`card-order-${order.id}`}>
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between mb-3">

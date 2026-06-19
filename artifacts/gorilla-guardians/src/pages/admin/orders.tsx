@@ -19,15 +19,6 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-red-100 text-red-800",
 };
 
-const demoOrders = Array.from({ length: 12 }, (_, i) => ({
-  id: i + 1,
-  customer: { name: ["Sarah J.","Pierre M.","Amira K.","James L.","Nina S.","Hana T.","Lucas B.","Mei C.","Omar D.","Emma W.","Carlos G.","Fatou S."][i] },
-  total: [210,85,450,125,65,320,175,240,90,380,155,70][i],
-  status: ["shipped","pending","processing","delivered","pending","shipped","processing","delivered","pending","shipped","delivered","cancelled"][i],
-  createdAt: new Date(Date.now() - i * 24 * 3600000).toISOString(),
-  items: [{ product: { name: ["Imigongo Panel","Peace Basket","Wood Sculpture","Ceramic Pot","Necklace","Table Runner","Drum","Mask","Bracelet","Painting","Bowl","Cloth"][i] }, quantity: 1 }],
-}));
-
 export default function AdminOrdersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -36,9 +27,10 @@ export default function AdminOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [newStatus, setNewStatus] = useState("");
 
-  const { data: ordersData, isLoading } = useListOrders({ status: statusFilter !== "all" ? statusFilter as any : undefined, limit: 100 });
+  const { data: ordersData, isLoading, isError, error } = useListOrders({ status: statusFilter !== "all" ? statusFilter as any : undefined, limit: 100 });
+  if (isError) console.error("[AdminOrders] API error", error);
   const updateOrder = useUpdateOrder();
-  const rawOrders = ordersData?.orders ?? demoOrders;
+  const rawOrders = ordersData?.orders ?? [];
   const orders = rawOrders.map((o: any) => ({
     ...o,
     _customerName: o.customer?.name ?? o.shippingAddress?.split(",")[0]?.trim() ?? "Customer",
@@ -104,6 +96,9 @@ export default function AdminOrdersPage() {
                     </tr>
                   </thead>
                   <tbody>
+                    {filtered.length === 0 && (
+                      <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">No orders found.</td></tr>
+                    )}
                     {filtered.map((o: any) => (
                       <tr key={o.id} className="border-b border-border hover:bg-muted/20 transition-colors" data-testid={`row-admin-order-${o.id}`}>
                         <td className="px-4 py-3 font-medium text-primary">ORD-{String(o.id).padStart(3,"0")}</td>

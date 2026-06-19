@@ -21,14 +21,6 @@ const ROLE_COLORS: Record<string, string> = {
   customer: "bg-gray-100 text-gray-700",
 };
 
-const demoUsers = [
-  { id: 1, name: "Jean-Paul Habimana", email: "super_admin@gorillaguardians.rw", role: "super_admin", createdAt: "2024-01-01", isActive: true },
-  { id: 2, name: "Marie Uwimana", email: "admin@gorillaguardians.rw", role: "admin", createdAt: "2024-01-02", isActive: true },
-  { id: 3, name: "Emmanuel Nkurunziza", email: "staff@gorillaguardians.rw", role: "staff", createdAt: "2024-01-03", isActive: true },
-  { id: 4, name: "Celestine Mukamana", email: "artisan@gorillaguardians.rw", role: "artisan", createdAt: "2024-02-10", isActive: true },
-  { id: 5, name: "Sarah Johnson", email: "customer@gorillaguardians.rw", role: "customer", createdAt: "2024-03-15", isActive: true },
-];
-
 export default function AdminUsersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -37,10 +29,11 @@ export default function AdminUsersPage() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [editItem, setEditItem] = useState<any>(null);
 
-  const { data: usersData, isLoading } = useListUsers({ role: roleFilter !== "all" ? roleFilter as any : undefined, search: search || undefined, limit: 100 });
+  const { data: usersData, isLoading, isError, error } = useListUsers({ role: roleFilter !== "all" ? roleFilter as any : undefined, search: search || undefined, limit: 100 });
+  if (isError) console.error("[AdminUsers] API error", error);
   const updateUser = useUpdateUser();
 
-  const users = Array.isArray(usersData) && usersData.length > 0 ? usersData : demoUsers;
+  const users = Array.isArray(usersData) ? usersData : [];
   const filtered = users.filter((u: any) => !search || u.name?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase()));
 
   const handleSave = () => {
@@ -99,6 +92,9 @@ export default function AdminUsersPage() {
                     </tr>
                   </thead>
                   <tbody>
+                    {filtered.length === 0 && (
+                      <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">No users found.</td></tr>
+                    )}
                     {filtered.map((u: any) => (
                       <tr key={u.id} className="border-b border-border hover:bg-muted/20 transition-colors" data-testid={`row-admin-user-${u.id}`}>
                         <td className="px-4 py-3">

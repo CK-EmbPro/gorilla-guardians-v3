@@ -11,16 +11,9 @@ import Footer from "@/components/layout/Footer";
 
 export default function ArtisansPage() {
   const [search, setSearch] = useState("");
-  const { data: artisansData, isLoading } = useListArtisans({ search: search || undefined, limit: 20 });
+  const { data: artisansData, isLoading, isError, error } = useListArtisans({ search: search || undefined, limit: 20 });
+  if (isError) console.error("[Artisans] API error", error);
   const artisans = Array.isArray(artisansData) ? artisansData : [];
-
-  const demoArtisans = [
-    { id: 1, name: "Celestine Mukamana", biography: "Master basket weaver and conservation ambassador. Former poacher turned protector.", skills: ["basket weaving", "imigongo art", "natural dyeing"], photo: null, productCount: 12, averageRating: 4.9, isConservationAmbassador: true },
-    { id: 2, name: "Emmanuel Nkurunziza", biography: "Third-generation woodcarver whose sculptures are collected worldwide.", skills: ["wood carving", "sculpture", "furniture"], photo: null, productCount: 8, averageRating: 4.8, isConservationAmbassador: false },
-    { id: 3, name: "Alphonsine Umubyeyi", biography: "Award-winning Imigongo artist with 30 years of experience preserving this ancient art form.", skills: ["imigongo painting", "natural pigments", "pattern design"], photo: null, productCount: 15, averageRating: 5.0, isConservationAmbassador: true },
-    { id: 4, name: "Jean-Pierre Nshimiyimana", biography: "Ceramics master who has trained over 30 young artisans in the community.", skills: ["pottery", "ceramics", "glazing"], photo: null, productCount: 10, averageRating: 4.7, isConservationAmbassador: false },
-  ];
-  const displayArtisans = artisans.length > 0 ? artisans : demoArtisans;
 
   return (
     <div className="min-h-screen bg-background">
@@ -65,9 +58,13 @@ export default function ArtisansPage() {
               </Card>
             ))}
           </div>
+        ) : artisans.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-muted-foreground">No artisans found.</p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {displayArtisans.map((artisan: any, i) => (
+            {artisans.map((artisan: any, i) => (
               <motion.div key={artisan.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
                 <Link href={`/artisans/${artisan.id}`}>
                   <Card className="group hover:shadow-xl transition-all duration-300 cursor-pointer overflow-hidden border-border" data-testid={`card-artisan-${artisan.id}`}>

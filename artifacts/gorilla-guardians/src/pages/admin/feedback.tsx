@@ -24,14 +24,6 @@ const TYPE_COLORS: Record<string, string> = {
   bug_report: "bg-orange-50 text-orange-700",
 };
 
-const demoFeedback = [
-  { id: 1, customer: { name: "Sarah Johnson" }, type: "suggestion", subject: "Add more basket varieties", message: "Would love to see more coiled basket designs, especially in natural earth tones.", status: "open", createdAt: new Date(Date.now()-1*24*3600000).toISOString() },
-  { id: 2, customer: { name: "Pierre Mbeki" }, type: "compliment", subject: "Amazing packaging", message: "The eco-friendly packaging was beautiful. The handwritten note made my day!", status: "resolved", createdAt: new Date(Date.now()-3*24*3600000).toISOString() },
-  { id: 3, customer: { name: "Amira Khalid" }, type: "complaint", subject: "Delayed shipping", message: "My order took 3 weeks to arrive, much longer than the stated 10 days.", status: "in_progress", createdAt: new Date(Date.now()-5*24*3600000).toISOString() },
-  { id: 4, customer: { name: "James Lee" }, type: "bug_report", subject: "Cart not saving items", message: "When I refresh the page my cart is empty even though I added items.", status: "open", createdAt: new Date(Date.now()-7*24*3600000).toISOString() },
-  { id: 5, customer: { name: "Nina Schmidt" }, type: "suggestion", subject: "Gift wrapping option", message: "It would be amazing if you offered gift wrapping for special occasions.", status: "resolved", createdAt: new Date(Date.now()-10*24*3600000).toISOString() },
-];
-
 export default function AdminFeedbackPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -40,10 +32,11 @@ export default function AdminFeedbackPage() {
   const [selected, setSelected] = useState<any>(null);
   const [reply, setReply] = useState("");
 
-  const { data: feedbackData, isLoading } = useListFeedback({ status: statusFilter !== "all" ? statusFilter as any : undefined });
+  const { data: feedbackData, isLoading, isError, error } = useListFeedback({ status: statusFilter !== "all" ? statusFilter as any : undefined });
+  if (isError) console.error("[AdminFeedback] API error", error);
   const updateFeedback = useUpdateFeedback();
 
-  const allFeedback = Array.isArray(feedbackData) && feedbackData.length > 0 ? feedbackData : demoFeedback;
+  const allFeedback = Array.isArray(feedbackData) ? feedbackData : [];
   const filtered = allFeedback.filter((f: any) =>
     !search || f.subject?.toLowerCase().includes(search.toLowerCase()) || f.customer?.name?.toLowerCase().includes(search.toLowerCase())
   );
@@ -97,6 +90,8 @@ export default function AdminFeedbackPage() {
 
           {isLoading ? (
             <div className="space-y-3">{Array.from({length:5}).map((_,i)=><div key={i} className="h-24 bg-muted rounded-xl animate-pulse"/>)}</div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-20"><p className="text-muted-foreground">No feedback found.</p></div>
           ) : (
             <div className="space-y-3">
               {filtered.map((f: any) => (
