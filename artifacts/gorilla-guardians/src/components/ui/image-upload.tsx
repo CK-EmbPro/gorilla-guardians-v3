@@ -12,14 +12,24 @@ interface ImageUploadProps {
   folder?: string;
 }
 
+// Computed once at module load — empty string in local dev when VITE_API_URL is unset.
+const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+
+// Relative paths (e.g. /api/uploads/xxx from local disk storage) must be
+// made absolute so <img> loads from the API server, not the Vite dev server.
+function resolveUrl(url: string): string {
+  if (!url) return "";
+  return url.startsWith("/") ? `${API_BASE}${url}` : url;
+}
+
 export function ImageUpload({ value, onChange, className, label, aspect = "video", folder = "general" }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
-  const [preview, setPreview] = useState<string>(value ?? "");
+  const [preview, setPreview] = useState<string>(resolveUrl(value ?? ""));
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    setPreview(value ?? "");
+    setPreview(resolveUrl(value ?? ""));
   }, [value]);
 
   const handleFile = async (file: File) => {
@@ -42,8 +52,7 @@ export function ImageUpload({ value, onChange, className, label, aspect = "video
       const formData = new FormData();
       formData.append("file", file);
 
-      const apiBase = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
-      const res = await fetch(`${apiBase}/api/upload?folder=${encodeURIComponent(folder)}`, {
+      const res = await fetch(`${API_BASE}/api/upload?folder=${encodeURIComponent(folder)}`, {
         method: "POST",
         body: formData,
         credentials: "include",
@@ -51,11 +60,11 @@ export function ImageUpload({ value, onChange, className, label, aspect = "video
       if (!res.ok) throw new Error("Upload failed");
       const { url } = await res.json();
       onChange(url);
-      setPreview(url);
+      setPreview(resolveUrl(url));
       toast({ title: "Image uploaded successfully" });
     } catch {
       toast({ title: "Upload failed", description: "Please try again.", variant: "destructive" });
-      setPreview(value ?? "");
+      setPreview(resolveUrl(value ?? ""));
     } finally {
       setUploading(false);
     }
