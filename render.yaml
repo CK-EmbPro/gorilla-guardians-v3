@@ -6,7 +6,7 @@ services:
     plan: free
 
     # Build: install deps from monorepo root, then build just the api-server
-    buildCommand: "corepack enable && pnpm install --ignore-scripts && pnpm --filter @workspace/api-server run build"
+    buildCommand: "pnpm install --ignore-scripts && pnpm --filter @workspace/api-server run build"
 
     # Start: run the compiled output
     startCommand: "pnpm --filter @workspace/api-server run start"
@@ -14,6 +14,8 @@ services:
     healthCheckPath: /api/health
 
     envVars:
+      - key: ENABLE_EXPERIMENTAL_COREPACK
+        value: "1"
       - key: NODE_ENV
         value: production
       - key: PORT
