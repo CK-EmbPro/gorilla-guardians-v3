@@ -154,7 +154,7 @@ export default function ArtisanProductsPage() {
           <DialogHeader><DialogTitle>Edit Product</DialogTitle></DialogHeader>
           {editProduct && (
             <div className="space-y-4 py-2">
-              <ImageUpload label="Product Image" value={editProduct.images?.[0]} onChange={url => setEditProduct((p: any) => ({ ...p, images: url ? [url] : [] }))} />
+              <ImageUpload label="Product Image" folder="products" value={editProduct.images?.[0]} onChange={url => setEditProduct((p: any) => ({ ...p, images: url ? [url] : [] }))} />
               <div className="space-y-1.5">
                 <Label>Name</Label>
                 <Input value={editProduct.name} onChange={e => setEditProduct((p: any) => ({ ...p, name: e.target.value }))} />

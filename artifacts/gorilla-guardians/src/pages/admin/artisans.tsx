@@ -145,7 +145,7 @@ export default function AdminArtisansPage() {
           <DialogHeader><DialogTitle>{isNew ? "Add Artisan" : "Edit Artisan"}</DialogTitle></DialogHeader>
           {editItem && (
             <div className="space-y-4 py-2">
-              <ImageUpload label="Profile Photo" value={editItem.photo} onChange={url => setEditItem((a: any) => ({ ...a, photo: url }))} aspect="square" />
+              <ImageUpload label="Profile Photo" folder="artisans" value={editItem.photo} onChange={url => setEditItem((a: any) => ({ ...a, photo: url }))} aspect="square" />
               <div className="space-y-1.5">
                 <Label>Full Name <span className="text-destructive">*</span></Label>
                 <Input value={editItem.name} onChange={e => setEditItem((a: any) => ({ ...a, name: e.target.value }))} />

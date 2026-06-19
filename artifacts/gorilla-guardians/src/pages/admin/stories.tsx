@@ -145,7 +145,7 @@ export default function AdminStoriesPage() {
           <DialogHeader><DialogTitle>{isNew ? "New Story" : "Edit Story"}</DialogTitle></DialogHeader>
           {editItem && (
             <div className="space-y-4 py-2">
-              <ImageUpload label="Cover Image" value={editItem.coverImage} onChange={url => setEditItem((s: any) => ({ ...s, coverImage: url }))} />
+              <ImageUpload label="Cover Image" folder="stories" value={editItem.coverImage} onChange={url => setEditItem((s: any) => ({ ...s, coverImage: url }))} />
               <div className="space-y-1.5">
                 <Label>Title <span className="text-destructive">*</span></Label>
                 <Input value={editItem.title} onChange={e => setEditItem((s: any) => ({ ...s, title: e.target.value }))} placeholder="Story title..." />

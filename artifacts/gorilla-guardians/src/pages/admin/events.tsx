@@ -121,7 +121,7 @@ export default function AdminEventsPage() {
           <DialogHeader><DialogTitle>{isNew ? "Add Event" : "Edit Event"}</DialogTitle></DialogHeader>
           {editItem && (
             <div className="space-y-4 py-2">
-              <ImageUpload label="Event Banner" value={editItem.image} onChange={url => setEditItem((e: any) => ({ ...e, image: url }))} />
+              <ImageUpload label="Event Banner" folder="events" value={editItem.image} onChange={url => setEditItem((e: any) => ({ ...e, image: url }))} />
               <div className="space-y-1.5">
                 <Label>Title <span className="text-destructive">*</span></Label>
                 <Input value={editItem.title} onChange={e => setEditItem((x: any) => ({ ...x, title: e.target.value }))} />

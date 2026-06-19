@@ -100,6 +100,7 @@ export default function ArtisanNewProductPage() {
                     value={form.image}
                     onChange={url => setForm(f => ({ ...f, image: url }))}
                     label="Main product photo"
+                    folder="products"
                   />
                 </CardContent>
               </Card>

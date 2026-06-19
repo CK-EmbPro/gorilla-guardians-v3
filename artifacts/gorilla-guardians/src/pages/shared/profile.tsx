@@ -81,6 +81,7 @@ export default function ProfilePage() {
                     value={profile.avatar}
                     onChange={url => setProfile(p => ({ ...p, avatar: url }))}
                     aspect="square"
+                    folder="users"
                     className="max-w-[200px]"
                   />
                 </div>

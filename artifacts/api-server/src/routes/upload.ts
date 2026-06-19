@@ -48,10 +48,21 @@ const diskUpload = multer({
   fileFilter,
 });
 
-function uploadToCloudinary(buffer: Buffer, mimetype: string): Promise<string> {
+const ALLOWED_FOLDERS = new Set([
+  "products", "artisans", "experiences", "events",
+  "stories", "categories", "users", "guides",
+  "reviews", "packages", "general",
+]);
+
+function sanitizeFolder(raw: unknown): string {
+  const s = typeof raw === "string" ? raw.toLowerCase().replace(/[^a-z0-9_-]/g, "") : "";
+  return ALLOWED_FOLDERS.has(s) ? s : "general";
+}
+
+function uploadToCloudinary(buffer: Buffer, mimetype: string, folder: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
-      { folder: "gorilla-guardians", resource_type: "image" },
+      { folder: `gorilla-guardians/${folder}`, resource_type: "image" },
       (error, result) => {
         if (error || !result) reject(error ?? new Error("Cloudinary upload failed"));
         else resolve(result.secure_url);
@@ -71,7 +82,8 @@ router.post("/upload", (req, res, next) => {
   }
 
   if (USE_CLOUDINARY) {
-    const url = await uploadToCloudinary(req.file.buffer!, req.file.mimetype);
+    const folder = sanitizeFolder(req.query.folder);
+    const url = await uploadToCloudinary(req.file.buffer!, req.file.mimetype, folder);
     res.json({ url });
   } else {
     const url = `/api/uploads/${req.file.filename}`;

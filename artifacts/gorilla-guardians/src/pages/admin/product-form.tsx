@@ -274,12 +274,14 @@ export default function ProductFormPage({ productId }: ProductFormPageProps) {
               <CardContent className="space-y-4">
                 <ImageUpload
                   label="Primary Image"
+                  folder="products"
                   value={form.images[0]}
                   onChange={url => set("images", url ? [url, ...form.images.slice(1)] : form.images.slice(1))}
                 />
                 {form.images[0] && (
                   <ImageUpload
                     label="Secondary Image (optional)"
+                    folder="products"
                     value={form.images[1]}
                     onChange={url => set("images", url ? [form.images[0], url] : [form.images[0]])}
                   />

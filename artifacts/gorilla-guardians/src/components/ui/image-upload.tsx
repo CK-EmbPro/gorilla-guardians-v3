@@ -9,29 +9,10 @@ interface ImageUploadProps {
   className?: string;
   label?: string;
   aspect?: "square" | "video" | "wide";
+  folder?: string;
 }
 
-const STORAGE_ORIGIN = "/api/storage/objects/";
-
-function isStorageUrl(url: string): boolean {
-  return url.startsWith(STORAGE_ORIGIN);
-}
-
-function objectPathFromUrl(url: string): string {
-  return url.slice("/api/storage".length);
-}
-
-async function deleteStorageObject(url: string): Promise<void> {
-  if (!isStorageUrl(url)) return;
-  const objectPath = objectPathFromUrl(url);
-  try {
-    await fetch(`/api/storage${objectPath}`, { method: "DELETE" });
-  } catch {
-    // best-effort — don't block the user
-  }
-}
-
-export function ImageUpload({ value, onChange, className, label, aspect = "video" }: ImageUploadProps) {
+export function ImageUpload({ value, onChange, className, label, aspect = "video", folder = "general" }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string>(value ?? "");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -56,38 +37,22 @@ export function ImageUpload({ value, onChange, className, label, aspect = "video
     reader.onload = (e) => setPreview(e.target?.result as string);
     reader.readAsDataURL(file);
 
-    const previousUrl = preview;
-
     setUploading(true);
     try {
-      const urlRes = await fetch("/api/storage/uploads/request-url", {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const apiBase = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+      const res = await fetch(`${apiBase}/api/upload?folder=${encodeURIComponent(folder)}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: file.name,
-          size: file.size,
-          contentType: file.type,
-        }),
+        body: formData,
+        credentials: "include",
       });
-      if (!urlRes.ok) throw new Error("Failed to get upload URL");
-      const { uploadURL, objectPath } = await urlRes.json();
-
-      const putRes = await fetch(uploadURL, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type },
-      });
-      if (!putRes.ok) throw new Error("Failed to upload file");
-
-      const url = `/api/storage${objectPath}`;
+      if (!res.ok) throw new Error("Upload failed");
+      const { url } = await res.json();
       onChange(url);
       setPreview(url);
       toast({ title: "Image uploaded successfully" });
-
-      // Delete the old image after the new one is safely stored
-      if (previousUrl) {
-        deleteStorageObject(previousUrl);
-      }
     } catch {
       toast({ title: "Upload failed", description: "Please try again.", variant: "destructive" });
       setPreview(value ?? "");
@@ -98,12 +63,8 @@ export function ImageUpload({ value, onChange, className, label, aspect = "video
 
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const urlToDelete = preview;
     setPreview("");
     onChange("");
-    if (urlToDelete) {
-      deleteStorageObject(urlToDelete);
-    }
   };
 
   const aspectClass = aspect === "square" ? "aspect-square" : aspect === "wide" ? "aspect-[3/1]" : "aspect-video";

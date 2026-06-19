@@ -145,7 +145,7 @@ export default function AdminPackagesPage() {
           <DialogHeader><DialogTitle>{isNew ? "Add Package" : "Edit Package"}</DialogTitle></DialogHeader>
           {editItem && (
             <div className="space-y-4 py-2">
-              <ImageUpload label="Cover Image" value={editItem.images?.[0]} onChange={(url: string) => setEditItem((e: any) => ({ ...e, images: url ? [url] : [] }))} />
+              <ImageUpload label="Cover Image" folder="packages" value={editItem.images?.[0]} onChange={(url: string) => setEditItem((e: any) => ({ ...e, images: url ? [url] : [] }))} />
               <div className="space-y-1.5">
                 <Label>Title <span className="text-destructive">*</span></Label>
                 <Input value={editItem.title} onChange={e => setEditItem((x: any) => ({ ...x, title: e.target.value }))} />

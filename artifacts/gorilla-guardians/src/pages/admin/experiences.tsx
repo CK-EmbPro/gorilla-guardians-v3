@@ -132,7 +132,7 @@ export default function AdminExperiencesPage() {
           <DialogHeader><DialogTitle>{isNew ? "Add Experience" : "Edit Experience"}</DialogTitle></DialogHeader>
           {editItem && (
             <div className="space-y-4 py-2">
-              <ImageUpload label="Cover Image" value={editItem.images?.[0]} onChange={url => setEditItem((e: any) => ({ ...e, images: url ? [url] : [] }))} />
+              <ImageUpload label="Cover Image" folder="experiences" value={editItem.images?.[0]} onChange={url => setEditItem((e: any) => ({ ...e, images: url ? [url] : [] }))} />
               <div className="space-y-1.5">
                 <Label>Title <span className="text-destructive">*</span></Label>
                 <Input value={editItem.title} onChange={e => setEditItem((x: any) => ({ ...x, title: e.target.value }))} />
