@@ -8,7 +8,7 @@ import DashboardSidebar from "@/components/layout/DashboardSidebar";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
-const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
 
 interface EmailLog {
   id: number;
@@ -53,8 +53,8 @@ export default function AdminEmailLogs() {
     setLoading(true);
     try {
       const [logsRes, statsRes] = await Promise.all([
-        fetch(`${BASE}/api/emails/logs?limit=100`, { credentials: "include" }),
-        fetch(`${BASE}/api/emails/stats`, { credentials: "include" }),
+        fetch(`${API_BASE}/api/emails/logs?limit=100`, { credentials: "include" }),
+        fetch(`${API_BASE}/api/emails/stats`, { credentials: "include" }),
       ]);
       if (logsRes.ok) setLogs(await logsRes.json());
       if (statsRes.ok) setStats(await statsRes.json());
@@ -70,7 +70,7 @@ export default function AdminEmailLogs() {
   async function handleResend(id: number) {
     setResendingId(id);
     try {
-      const res = await fetch(`${BASE}/api/emails/resend/${id}`, { method: "POST", credentials: "include" });
+      const res = await fetch(`${API_BASE}/api/emails/resend/${id}`, { method: "POST", credentials: "include" });
       if (res.ok) {
         toast({ title: "Resend queued", description: "The email will be retried shortly." });
         setTimeout(fetchLogs, 2000);
