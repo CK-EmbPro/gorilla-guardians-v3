@@ -27,6 +27,8 @@ const PAYMENT_COLORS: Record<string, string> = {
   refunded: "bg-gray-50 text-gray-600",
 };
 
+const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+
 function RescheduleModal({ booking, onClose, onSuccess }: { booking: any; onClose: () => void; onSuccess: () => void }) {
   const [date, setDate] = useState(booking.date || "");
   const [participants, setParticipants] = useState(String(booking.participants || 1));
@@ -38,7 +40,7 @@ function RescheduleModal({ booking, onClose, onSuccess }: { booking: any; onClos
     if (!date) { toast({ title: "Please select a date", variant: "destructive" }); return; }
     setLoading(true);
     try {
-      const res = await fetch(`/api/bookings/${booking.id}/reschedule`, {
+      const res = await fetch(`${API_BASE}/api/bookings/${booking.id}/reschedule`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

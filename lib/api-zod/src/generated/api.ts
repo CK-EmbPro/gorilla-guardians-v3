@@ -818,17 +818,7 @@ export const ListBookingsQueryParams = zod.object({
   "limit": zod.coerce.number().optional()
 })
 
-export const ListBookingsResponseItem = zod.object({
-  "id": zod.number(),
-  "userId": zod.number(),
-  "experienceId": zod.number(),
-  "date": zod.coerce.date(),
-  "participants": zod.number(),
-  "totalAmount": zod.number(),
-  "status": zod.enum(['pending', 'confirmed', 'cancelled', 'completed']),
-  "paymentStatus": zod.enum(['pending', 'paid', 'refunded']),
-  "specialRequests": zod.string().nullish(),
-  "experience": zod.object({
+export const BookingExperienceSchema = zod.object({
   "id": zod.number(),
   "title": zod.string(),
   "slug": zod.string(),
@@ -846,9 +836,61 @@ export const ListBookingsResponseItem = zod.object({
   "active": zod.boolean(),
   "averageRating": zod.number().nullish(),
   "reviewCount": zod.number(),
-  "createdAt": zod.coerce.date()
-}).optional(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.string()
+})
+
+export const BookingGuideSchema = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "photo": zod.string().nullish(),
+  "biography": zod.string().nullish(),
+  "languages": zod.array(zod.string()),
+  "experienceLevel": zod.string(),
+  "rating": zod.number(),
+  "reviewCount": zod.number(),
+  "available": zod.boolean(),
+  "specialties": zod.array(zod.string()),
+  "phone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+}).nullish()
+
+export const BookingUserSchema = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string().nullish(),
+  "avatar": zod.string().nullish(),
+}).nullish()
+
+export const BookingHistoryItemSchema = zod.object({
+  "id": zod.number(),
+  "status": zod.string(),
+  "note": zod.string().nullish(),
+  "changedBy": zod.number().nullish(),
+  "createdAt": zod.string(),
+})
+
+export const BookingStatusEnum = zod.enum(['pending', 'confirmed', 'cancelled', 'completed', 'approved', 'checked_in'])
+
+export const ListBookingsResponseItem = zod.object({
+  "id": zod.number(),
+  "userId": zod.number(),
+  "experienceId": zod.number(),
+  "date": zod.coerce.date(),
+  "participants": zod.number(),
+  "totalAmount": zod.number(),
+  "status": BookingStatusEnum,
+  "paymentStatus": zod.enum(['pending', 'paid', 'refunded']),
+  "specialRequests": zod.string().nullish(),
+  "bookingReference": zod.string().nullish(),
+  "qrCodeData": zod.string().nullish(),
+  "checkinAt": zod.string().nullish(),
+  "cancellationReason": zod.string().nullish(),
+  "experience": BookingExperienceSchema.optional(),
+  "guide": BookingGuideSchema,
+  "user": BookingUserSchema,
+  "history": zod.array(BookingHistoryItemSchema).optional(),
+  "createdAt": zod.string()
 })
 export const ListBookingsResponse = zod.array(ListBookingsResponseItem)
 
@@ -879,30 +921,18 @@ export const GetBookingResponse = zod.object({
   "date": zod.coerce.date(),
   "participants": zod.number(),
   "totalAmount": zod.number(),
-  "status": zod.enum(['pending', 'confirmed', 'cancelled', 'completed']),
+  "status": BookingStatusEnum,
   "paymentStatus": zod.enum(['pending', 'paid', 'refunded']),
   "specialRequests": zod.string().nullish(),
-  "experience": zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "slug": zod.string(),
-  "description": zod.string(),
-  "type": zod.enum(['guided_tour', 'homestay', 'workshop', 'dance_lesson', 'cooking_class']),
-  "images": zod.array(zod.string()),
-  "videoUrl": zod.string().nullish(),
-  "price": zod.number(),
-  "duration": zod.string(),
-  "capacity": zod.number(),
-  "difficultyLevel": zod.string().nullish(),
-  "includedItems": zod.array(zod.string()),
-  "meetingPoint": zod.string().nullish(),
-  "cancellationPolicy": zod.string().nullish(),
-  "active": zod.boolean(),
-  "averageRating": zod.number().nullish(),
-  "reviewCount": zod.number(),
-  "createdAt": zod.coerce.date()
-}).optional(),
-  "createdAt": zod.coerce.date()
+  "bookingReference": zod.string().nullish(),
+  "qrCodeData": zod.string().nullish(),
+  "checkinAt": zod.string().nullish(),
+  "cancellationReason": zod.string().nullish(),
+  "experience": BookingExperienceSchema.optional(),
+  "guide": BookingGuideSchema,
+  "user": BookingUserSchema,
+  "history": zod.array(BookingHistoryItemSchema).optional(),
+  "createdAt": zod.string()
 })
 
 
@@ -914,8 +944,8 @@ export const UpdateBookingParams = zod.object({
 })
 
 export const UpdateBookingBody = zod.object({
-  "status": zod.string().optional(),
-  "paymentStatus": zod.string().optional()
+  "status": BookingStatusEnum.optional(),
+  "paymentStatus": zod.enum(['pending', 'paid', 'refunded']).optional()
 })
 
 export const UpdateBookingResponse = zod.object({
@@ -925,30 +955,18 @@ export const UpdateBookingResponse = zod.object({
   "date": zod.coerce.date(),
   "participants": zod.number(),
   "totalAmount": zod.number(),
-  "status": zod.enum(['pending', 'confirmed', 'cancelled', 'completed']),
+  "status": BookingStatusEnum,
   "paymentStatus": zod.enum(['pending', 'paid', 'refunded']),
   "specialRequests": zod.string().nullish(),
-  "experience": zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "slug": zod.string(),
-  "description": zod.string(),
-  "type": zod.enum(['guided_tour', 'homestay', 'workshop', 'dance_lesson', 'cooking_class']),
-  "images": zod.array(zod.string()),
-  "videoUrl": zod.string().nullish(),
-  "price": zod.number(),
-  "duration": zod.string(),
-  "capacity": zod.number(),
-  "difficultyLevel": zod.string().nullish(),
-  "includedItems": zod.array(zod.string()),
-  "meetingPoint": zod.string().nullish(),
-  "cancellationPolicy": zod.string().nullish(),
-  "active": zod.boolean(),
-  "averageRating": zod.number().nullish(),
-  "reviewCount": zod.number(),
-  "createdAt": zod.coerce.date()
-}).optional(),
-  "createdAt": zod.coerce.date()
+  "bookingReference": zod.string().nullish(),
+  "qrCodeData": zod.string().nullish(),
+  "checkinAt": zod.string().nullish(),
+  "cancellationReason": zod.string().nullish(),
+  "experience": BookingExperienceSchema.optional(),
+  "guide": BookingGuideSchema,
+  "user": BookingUserSchema,
+  "history": zod.array(BookingHistoryItemSchema).optional(),
+  "createdAt": zod.string()
 })
 
 

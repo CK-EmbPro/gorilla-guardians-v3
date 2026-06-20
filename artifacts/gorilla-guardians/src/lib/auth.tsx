@@ -23,6 +23,7 @@ export const TEST_ACCOUNTS: AuthUser[] = [
 interface AuthContextValue {
   user: AuthUser | null;
   login: (email: string, password: string) => Promise<boolean>;
+  register: (name: string, email: string, password: string, role: "customer" | "artisan") => Promise<boolean>;
   loginAs: (user: AuthUser) => void;
   logout: () => void;
   isAuthenticated: boolean;
@@ -71,6 +72,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return false;
   };
 
+  const register = async (name: string, email: string, password: string, role: "customer" | "artisan"): Promise<boolean> => {
+    const apiBase = import.meta.env.VITE_API_URL ?? "";
+    const res = await fetch(`${apiBase}/api/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ name, email, password, role }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    setUser(data.user);
+    return true;
+  };
+
   const loginAs = (u: AuthUser) => setUser(u);
 
   const logout = () => {
@@ -82,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const hasRole = (...roles: UserRole[]) => !!user && roles.includes(user.role);
 
   return (
-    <AuthContext.Provider value={{ user, login, loginAs, logout, isAuthenticated: !!user, hasRole }}>
+    <AuthContext.Provider value={{ user, login, register, loginAs, logout, isAuthenticated: !!user, hasRole }}>
       {children}
     </AuthContext.Provider>
   );

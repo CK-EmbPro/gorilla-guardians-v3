@@ -2413,8 +2413,10 @@ components:
       properties:
         status:
           type: string
+          enum: [pending, approved, confirmed, cancelled, completed, checked_in]
         paymentStatus:
           type: string
+          enum: [pending, paid, refunded]
 
     # ORDER
     Order:

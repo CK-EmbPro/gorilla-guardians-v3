@@ -20,6 +20,8 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-red-100 text-red-800 border-red-200",
 };
 
+const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+
 export default function BookingVerifyPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -37,7 +39,7 @@ export default function BookingVerifyPage() {
     setNotFound(false);
     setBooking(null);
     try {
-      const res = await fetch("/api/bookings/verify", {
+      const res = await fetch(`${API_BASE}/api/bookings/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -57,7 +59,7 @@ export default function BookingVerifyPage() {
     if (!booking) return;
     setCheckingIn(true);
     try {
-      const res = await fetch(`/api/bookings/${booking.id}/checkin`, {
+      const res = await fetch(`${API_BASE}/api/bookings/${booking.id}/checkin`, {
         method: "POST",
         credentials: "include",
       });

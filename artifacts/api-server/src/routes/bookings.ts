@@ -12,6 +12,7 @@ import { createNotification, notifyAdmins } from "../lib/notificationHelper";
 import { sendEmail, emailTemplates } from "../lib/emailService";
 import { getStripeClient, isStripeConfigured } from "../lib/stripeService";
 import { randomBytes } from "crypto";
+import { requireAuth, requireRole, STAFF_ROLES, ADMIN_ROLES } from "../middlewares/auth";
 
 const APP_URL = process.env.APP_URL ?? "https://gorillaguardians.rw";
 
@@ -65,14 +66,26 @@ async function buildBooking(booking: typeof bookingsTable.$inferSelect) {
   };
 }
 
-// GET /bookings
-router.get("/bookings", async (req, res): Promise<void> => {
+// GET /bookings — admin/staff see all; customers see only their own
+router.get("/bookings", requireAuth, async (req, res): Promise<void> => {
+  const s = req.session as any;
+  const isStaff = STAFF_ROLES.includes(s.role);
+
   const params = ListBookingsQueryParams.safeParse(req.query);
   const conditions: any[] = [];
   if (params.success) {
-    if (params.data.userId) conditions.push(eq(bookingsTable.userId, Number(params.data.userId)));
     if (params.data.status) conditions.push(eq(bookingsTable.status, params.data.status));
+    if (isStaff) {
+      // Admin/staff: honour the optional userId filter
+      if (params.data.userId) conditions.push(eq(bookingsTable.userId, Number(params.data.userId)));
+    } else {
+      // Customer: force-filter to their own bookings regardless of query param
+      conditions.push(eq(bookingsTable.userId, s.userId));
+    }
+  } else if (!isStaff) {
+    conditions.push(eq(bookingsTable.userId, s.userId));
   }
+
   const where = conditions.length > 0 ? and(...conditions) : undefined;
   const bookings = await db.select().from(bookingsTable).where(where).orderBy(desc(bookingsTable.createdAt));
   const rich = await Promise.all(bookings.map(buildBooking));
@@ -91,11 +104,11 @@ router.get("/bookings", async (req, res): Promise<void> => {
   res.json(filtered);
 });
 
-// POST /bookings
-router.post("/bookings", async (req, res): Promise<void> => {
+// POST /bookings — any authenticated user
+router.post("/bookings", requireAuth, async (req, res): Promise<void> => {
   const parsed = CreateBookingBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const userId = (req.session as any).userId ?? 1;
+  const userId = (req.session as any).userId as number;
   const [exp] = await db.select().from(experiencesTable).where(eq(experiencesTable.id, parsed.data.experienceId));
   if (!exp) { res.status(404).json({ error: "Experience not found" }); return; }
 
@@ -213,8 +226,8 @@ router.get("/bookings/ref/:ref", async (req, res): Promise<void> => {
   res.json(await buildBooking(booking));
 });
 
-// POST /bookings/verify — MUST be before /:id checkin
-router.post("/bookings/verify", async (req, res): Promise<void> => {
+// POST /bookings/verify — staff/admin only (used at check-in stations)
+router.post("/bookings/verify", requireRole(...STAFF_ROLES), async (req, res): Promise<void> => {
   const { ref } = req.body;
   if (!ref) { res.status(400).json({ error: "ref is required" }); return; }
   const [booking] = await db.select().from(bookingsTable).where(eq(bookingsTable.bookingReference, ref));
@@ -222,30 +235,59 @@ router.post("/bookings/verify", async (req, res): Promise<void> => {
   res.json(await buildBooking(booking));
 });
 
-// GET /bookings/:id
-router.get("/bookings/:id", async (req, res): Promise<void> => {
+// GET /bookings/:id — owner or staff/admin
+router.get("/bookings/:id", requireAuth, async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const id = parseInt(raw, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [booking] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, id));
   if (!booking) { res.status(404).json({ error: "Booking not found" }); return; }
+
+  const s = req.session as any;
+  if (!STAFF_ROLES.includes(s.role) && booking.userId !== s.userId) {
+    res.status(403).json({ error: "Access denied" });
+    return;
+  }
+
   res.json(await buildBooking(booking));
 });
 
-// PATCH /bookings/:id
-router.patch("/bookings/:id", async (req, res): Promise<void> => {
+// PATCH /bookings/:id — owner (cancel only) or staff/admin (any status)
+router.patch("/bookings/:id", requireAuth, async (req, res): Promise<void> => {
   const params = UpdateBookingParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   const parsed = UpdateBookingBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
   const [prevBooking] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, params.data.id));
+  if (!prevBooking) { res.status(404).json({ error: "Booking not found" }); return; }
+
+  const s = req.session as any;
+  const isStaff = STAFF_ROLES.includes(s.role);
+  const isOwner = prevBooking.userId === s.userId;
+
+  if (!isStaff && !isOwner) {
+    res.status(403).json({ error: "You can only modify your own bookings" });
+    return;
+  }
+
+  // Customers may only cancel their own booking — no other status transitions
+  if (!isStaff && parsed.data.status && parsed.data.status !== "cancelled") {
+    res.status(403).json({ error: "You can only cancel your own booking" });
+    return;
+  }
+
+  // Only admin/super_admin may update payment status
+  if (!ADMIN_ROLES.includes(s.role) && parsed.data.paymentStatus) {
+    res.status(403).json({ error: "Only admins can update payment status" });
+    return;
+  }
+
   const [booking] = await db.update(bookingsTable).set(parsed.data as any).where(eq(bookingsTable.id, params.data.id)).returning();
-  if (!booking) { res.status(404).json({ error: "Booking not found" }); return; }
 
-  const changedBy = (req.session as any)?.userId ?? null;
+  const changedBy = s.userId ?? null;
 
-  if (parsed.data.status && prevBooking && parsed.data.status !== prevBooking.status) {
-    // Log history
+  if (parsed.data.status && parsed.data.status !== prevBooking.status) {
     await db.insert(bookingHistoryTable).values({
       bookingId: booking.id,
       status: parsed.data.status,
@@ -288,9 +330,6 @@ router.patch("/bookings/:id", async (req, res): Promise<void> => {
           userId: booking.userId,
         }).catch(err => console.error("[bookings] email error:", err));
       } else if (parsed.data.status === "cancelled") {
-        // A "pending" booking being declined by an admin is a rejection (no payment was ever
-        // taken); a previously-approved/confirmed booking being cancelled is a true cancellation.
-        // These get distinct copy and a distinct email-log template tag.
         const isRejection = prevBooking.status === "pending";
         sendEmail({
           to: customer.email,
@@ -321,8 +360,8 @@ router.patch("/bookings/:id", async (req, res): Promise<void> => {
   res.json(await buildBooking(booking));
 });
 
-// POST /bookings/:id/checkin — QR check-in
-router.post("/bookings/:id/checkin", async (req, res): Promise<void> => {
+// POST /bookings/:id/checkin — staff/admin only
+router.post("/bookings/:id/checkin", requireRole(...STAFF_ROLES), async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [booking] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, id));
@@ -335,7 +374,7 @@ router.post("/bookings/:id/checkin", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Cannot check in a cancelled booking" });
     return;
   }
-  const changedBy = (req.session as any)?.userId ?? null;
+  const changedBy = (req.session as any).userId as number;
   const [updated] = await db.update(bookingsTable).set({
     checkinAt: new Date(),
     status: "checked_in",
@@ -359,8 +398,8 @@ router.post("/bookings/:id/checkin", async (req, res): Promise<void> => {
   res.json({ success: true, checkinAt: updated.checkinAt?.toISOString(), booking: await buildBooking(updated) });
 });
 
-// POST /bookings/:id/reschedule
-router.post("/bookings/:id/reschedule", async (req, res): Promise<void> => {
+// POST /bookings/:id/reschedule — owner or staff/admin
+router.post("/bookings/:id/reschedule", requireAuth, async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const { date, participants, reason } = req.body;
@@ -368,6 +407,13 @@ router.post("/bookings/:id/reschedule", async (req, res): Promise<void> => {
 
   const [booking] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, id));
   if (!booking) { res.status(404).json({ error: "Booking not found" }); return; }
+
+  const s = req.session as any;
+  if (!STAFF_ROLES.includes(s.role) && booking.userId !== s.userId) {
+    res.status(403).json({ error: "You can only reschedule your own bookings" });
+    return;
+  }
+
   if (booking.status === "cancelled" || booking.status === "completed" || booking.status === "checked_in") {
     res.status(400).json({ error: `Cannot reschedule a ${booking.status} booking` });
     return;
@@ -378,7 +424,6 @@ router.post("/bookings/:id/reschedule", async (req, res): Promise<void> => {
 
   const newParticipants = participants ?? booking.participants;
 
-  // Capacity check for new date
   const bookedResult = await db
     .select({ total: sum(bookingsTable.participants) })
     .from(bookingsTable)
@@ -396,7 +441,7 @@ router.post("/bookings/:id/reschedule", async (req, res): Promise<void> => {
   }
 
   const newTotal = Number(exp.price) * newParticipants;
-  const changedBy = (req.session as any)?.userId ?? null;
+  const changedBy = s.userId as number;
 
   const [updated] = await db.update(bookingsTable).set({
     date,
@@ -424,8 +469,8 @@ router.post("/bookings/:id/reschedule", async (req, res): Promise<void> => {
   res.json(await buildBooking(updated));
 });
 
-// PATCH /bookings/:id/guide — assign guide
-router.patch("/bookings/:id/guide", async (req, res): Promise<void> => {
+// PATCH /bookings/:id/guide — admin/super_admin only
+router.patch("/bookings/:id/guide", requireRole(...ADMIN_ROLES), async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const { guideId } = req.body;
@@ -435,7 +480,7 @@ router.patch("/bookings/:id/guide", async (req, res): Promise<void> => {
     .returning();
   if (!updated) { res.status(404).json({ error: "Booking not found" }); return; }
 
-  const changedBy = (req.session as any)?.userId ?? null;
+  const changedBy = (req.session as any).userId as number;
   const guideName = guideId ? (await db.select({ name: guidesTable.name }).from(guidesTable).where(eq(guidesTable.id, guideId)))[0]?.name : null;
 
   await db.insert(bookingHistoryTable).values({
@@ -448,12 +493,19 @@ router.patch("/bookings/:id/guide", async (req, res): Promise<void> => {
   res.json(await buildBooking(updated));
 });
 
-// GET /bookings/:id/ticket — ticket data
-router.get("/bookings/:id/ticket", async (req, res): Promise<void> => {
+// GET /bookings/:id/ticket — owner or staff/admin
+router.get("/bookings/:id/ticket", requireAuth, async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [booking] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, id));
   if (!booking) { res.status(404).json({ error: "Booking not found" }); return; }
+
+  const s = req.session as any;
+  if (!STAFF_ROLES.includes(s.role) && booking.userId !== s.userId) {
+    res.status(403).json({ error: "Access denied" });
+    return;
+  }
+
   const rich = await buildBooking(booking);
   res.json({
     bookingId: booking.id,
@@ -472,15 +524,21 @@ router.get("/bookings/:id/ticket", async (req, res): Promise<void> => {
   });
 });
 
-// POST /bookings/:id/checkout-session — only once an admin has approved the booking, matching
-// the existing "no payment required until your booking is confirmed" UX.
-router.post("/bookings/:id/checkout-session", async (req, res): Promise<void> => {
+// POST /bookings/:id/checkout-session — booking owner only
+router.post("/bookings/:id/checkout-session", requireAuth, async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   if (!isStripeConfigured()) { res.status(503).json({ error: "Payments are not configured yet. Set STRIPE_SECRET_KEY." }); return; }
 
   const [booking] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, id));
   if (!booking) { res.status(404).json({ error: "Booking not found" }); return; }
+
+  const s = req.session as any;
+  if (booking.userId !== s.userId) {
+    res.status(403).json({ error: "You can only pay for your own bookings" });
+    return;
+  }
+
   if (booking.status !== "approved" && booking.status !== "confirmed") {
     res.status(400).json({ error: "Booking must be approved before it can be paid for" });
     return;

@@ -10,6 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import DashboardSidebar from "@/components/layout/DashboardSidebar";
+import { ImageUpload } from "@/components/ui/image-upload";
+
+const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
 
 const EXPERIENCE_LEVELS = ["beginner", "intermediate", "advanced", "expert"];
 
@@ -77,8 +80,14 @@ function GuideForm({ guide, onSave, onCancel }: { guide?: any; onSave: (data: an
             <Input value={form.specialties} onChange={e => setForm(f => ({ ...f, specialties: e.target.value }))} placeholder="Gorilla tracking, Bird watching" />
           </div>
           <div className="sm:col-span-2">
-            <label className="text-xs font-medium mb-1 block">Photo URL</label>
-            <Input value={form.photo} onChange={e => setForm(f => ({ ...f, photo: e.target.value }))} placeholder="https://..." />
+            <label className="text-xs font-medium mb-1 block">Photo</label>
+            <ImageUpload
+              value={form.photo}
+              onChange={(url: string) => setForm(f => ({ ...f, photo: url }))}
+              folder="guides"
+              label="Guide photo"
+              aspect="square"
+            />
           </div>
           <div className="sm:col-span-2">
             <label className="text-xs font-medium mb-1 block">Biography</label>
@@ -200,7 +209,7 @@ export default function AdminGuidesPage() {
   const { data: guides = [], isLoading } = useQuery<any[]>({
     queryKey: ["guides"],
     queryFn: async () => {
-      const res = await fetch("/api/guides", { credentials: "include" });
+      const res = await fetch(`${API_BASE}/api/guides`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load guides");
       return res.json();
     },
@@ -208,7 +217,7 @@ export default function AdminGuidesPage() {
 
   const addMutation = useMutation({
     mutationFn: async (data: any) => {
-      const res = await fetch("/api/guides", {
+      const res = await fetch(`${API_BASE}/api/guides`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -227,7 +236,7 @@ export default function AdminGuidesPage() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const res = await fetch(`/api/guides/${id}`, {
+      const res = await fetch(`${API_BASE}/api/guides/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -246,7 +255,7 @@ export default function AdminGuidesPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/guides/${id}`, { method: "DELETE", credentials: "include" });
+      const res = await fetch(`${API_BASE}/api/guides/${id}`, { method: "DELETE", credentials: "include" });
       if (!res.ok) throw new Error("Failed to delete guide");
     },
     onSuccess: () => {

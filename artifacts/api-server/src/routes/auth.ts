@@ -57,6 +57,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     role,
   }).returning();
   (req.session as any).userId = user.id;
+  (req.session as any).role = user.role;
 
   // Send welcome email
   sendEmail({
@@ -84,6 +85,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
   (req.session as any).userId = user.id;
+  (req.session as any).role = user.role;
   res.json({ user: safeUser(user), token: `session-${user.id}` });
 });
 

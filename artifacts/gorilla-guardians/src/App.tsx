@@ -10,6 +10,7 @@ import { NotificationsProvider } from "@/lib/useNotifications";
 // Public pages
 import HomePage from "@/pages/home";
 import LoginPage from "@/pages/login";
+import RegisterPage from "@/pages/register";
 import ForgotPasswordPage from "@/pages/forgot-password";
 import ResetPasswordPage from "@/pages/reset-password";
 import ProductsPage from "@/pages/products";
@@ -119,6 +120,7 @@ function Router() {
       {/* Public */}
       <Route path="/" component={HomePage} />
       <Route path="/login" component={LoginPage} />
+      <Route path="/register" component={RegisterPage} />
       <Route path="/forgot-password" component={ForgotPasswordPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/products" component={ProductsPage} />

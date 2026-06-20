@@ -24,6 +24,8 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
   cancelled: <XCircle className="w-4 h-4" />,
 };
 
+const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+
 export default function BookingTicketPage() {
   const [, params] = useRoute("/booking-ticket/:id");
   const [, setLocation] = useLocation();
@@ -32,7 +34,7 @@ export default function BookingTicketPage() {
   const { data: ticket, isLoading, error } = useQuery<any>({
     queryKey: ["ticket", id],
     queryFn: async () => {
-      const res = await fetch(`/api/bookings/${id}/ticket`, { credentials: "include" });
+      const res = await fetch(`${API_BASE}/api/bookings/${id}/ticket`, { credentials: "include" });
       if (!res.ok) throw new Error("Ticket not found");
       return res.json();
     },

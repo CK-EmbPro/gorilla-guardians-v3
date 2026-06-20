@@ -8,6 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 
+const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+
 export default function BookingSuccessPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -24,7 +26,7 @@ export default function BookingSuccessPage() {
   const { data: booking } = useQuery<any>({
     queryKey: ["booking-success", bookingId],
     queryFn: async () => {
-      const res = await fetch(`/api/bookings/${bookingId}`, { credentials: "include" });
+      const res = await fetch(`${API_BASE}/api/bookings/${bookingId}`, { credentials: "include" });
       if (!res.ok) return null;
       return res.json();
     },

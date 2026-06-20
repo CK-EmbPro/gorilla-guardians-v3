@@ -59,8 +59,9 @@ export function ImageUpload({ value, onChange, className, label, aspect = "video
       });
       if (!res.ok) throw new Error("Upload failed");
       const { url } = await res.json();
-      onChange(url);
-      setPreview(resolveUrl(url));
+      const resolved = resolveUrl(url);
+      onChange(resolved);
+      setPreview(resolved);
       toast({ title: "Image uploaded successfully" });
     } catch {
       toast({ title: "Upload failed", description: "Please try again.", variant: "destructive" });

@@ -15,6 +15,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import DashboardSidebar from "@/components/layout/DashboardSidebar";
 
+const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
   approved: "bg-blue-100 text-blue-800 border-blue-200",
@@ -140,7 +142,7 @@ export default function AdminBookingsPage() {
   const { data: guides = [] } = useQuery<any[]>({
     queryKey: ["guides"],
     queryFn: async () => {
-      const res = await fetch("/api/guides", { credentials: "include" });
+      const res = await fetch(`${API_BASE}/api/guides`, { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
     },
@@ -187,7 +189,7 @@ export default function AdminBookingsPage() {
   const handleCheckin = async (id: number) => {
     setCheckingInId(id);
     try {
-      const res = await fetch(`/api/bookings/${id}/checkin`, {
+      const res = await fetch(`${API_BASE}/api/bookings/${id}/checkin`, {
         method: "POST",
         credentials: "include",
       });
@@ -210,7 +212,7 @@ export default function AdminBookingsPage() {
   const handleAssignGuide = async (bookingId: number, guideId: number | null) => {
     setAssigningGuideId(bookingId);
     try {
-      const res = await fetch(`/api/bookings/${bookingId}/guide`, {
+      const res = await fetch(`${API_BASE}/api/bookings/${bookingId}/guide`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

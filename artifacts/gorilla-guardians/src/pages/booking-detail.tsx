@@ -35,6 +35,8 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
   cancelled: <XCircle className="w-4 h-4 text-red-600" />,
 };
 
+const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+
 function RescheduleModal({ booking, onClose, onSuccess }: { booking: any; onClose: () => void; onSuccess: () => void }) {
   const [date, setDate] = useState(booking.date || "");
   const [participants, setParticipants] = useState(String(booking.participants || 1));
@@ -46,7 +48,7 @@ function RescheduleModal({ booking, onClose, onSuccess }: { booking: any; onClos
     if (!date) { toast({ title: "Please select a date", variant: "destructive" }); return; }
     setLoading(true);
     try {
-      const res = await fetch(`/api/bookings/${booking.id}/reschedule`, {
+      const res = await fetch(`${API_BASE}/api/bookings/${booking.id}/reschedule`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -108,7 +110,7 @@ export default function BookingDetailPage() {
   const { data: booking, isLoading, error } = useQuery<any>({
     queryKey: ["booking", id],
     queryFn: async () => {
-      const res = await fetch(`/api/bookings/${id}`, { credentials: "include" });
+      const res = await fetch(`${API_BASE}/api/bookings/${id}`, { credentials: "include" });
       if (!res.ok) throw new Error("Booking not found");
       return res.json();
     },
@@ -117,7 +119,7 @@ export default function BookingDetailPage() {
 
   const cancelMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/bookings/${id}`, {
+      const res = await fetch(`${API_BASE}/api/bookings/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
