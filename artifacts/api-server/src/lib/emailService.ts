@@ -431,4 +431,42 @@ export const emailTemplates = {
         <a href="${BASE_URL}/customer/messages" style="display:inline-block;background:#2D6A4F;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;">Reply</a>
       </div>`);
   },
+
+  bookingCompleted(data: { customerName: string; experienceTitle: string; date: string; bookingId: number; bookingReference?: string | null }) {
+    return wrap(`
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="font-size:40px;margin-bottom:12px;">🎉</div>
+        <h2 style="font-family:Georgia,serif;color:#2D6A4F;margin:0 0 8px;">Experience Complete!</h2>
+        <p style="color:#666;margin:0;">Thank you for joining us, ${data.customerName}. We hope it was unforgettable.</p>
+      </div>
+      <div style="background:#f8fffe;border:1px solid #b7e4c7;border-radius:8px;padding:20px;margin-bottom:24px;">
+        <h3 style="margin:0 0 12px;color:#1b4332;font-family:Georgia,serif;">${data.experienceTitle}</h3>
+        ${data.bookingReference ? `<p style="margin:0 0 6px;font-size:13px;color:#888;font-family:monospace;">Ref: ${data.bookingReference}</p>` : ""}
+        <p style="margin:0;font-size:14px;color:#666;">📅 ${data.date}</p>
+      </div>
+      <p style="color:#444;font-size:14px;text-align:center;margin-bottom:24px;">Every booking supports artisan families and mountain gorilla conservation. Thank you for being part of our community.</p>
+      <div style="text-align:center;">
+        <a href="${BASE_URL}/experiences" style="display:inline-block;background:#2D6A4F;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;margin-right:12px;">Book Again</a>
+        <a href="${BASE_URL}/customer/bookings" style="display:inline-block;background:#fff;color:#2D6A4F;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;border:1px solid #2D6A4F;">My Bookings</a>
+      </div>`);
+  },
+
+  bookingPaymentFailed(data: { customerName: string; experienceTitle: string; date: string; bookingId: number; bookingReference?: string | null }) {
+    return wrap(`
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
+        <h2 style="font-family:Georgia,serif;color:#c0392b;margin:0 0 8px;">Payment Failed</h2>
+        <p style="color:#666;margin:0;">Hi ${data.customerName}, your payment for this booking could not be processed.</p>
+      </div>
+      <div style="background:#fff8f8;border:1px solid #f5c6c6;border-radius:8px;padding:20px;margin-bottom:24px;">
+        ${data.bookingReference ? `<p style="margin:0 0 4px;font-size:13px;color:#888;font-family:monospace;">Ref: ${data.bookingReference}</p>` : ""}
+        <p style="margin:0 0 6px;font-size:14px;color:#333;"><strong>${data.experienceTitle}</strong></p>
+        <p style="margin:0;font-size:14px;color:#666;">📅 ${data.date}</p>
+      </div>
+      <p style="color:#666;font-size:14px;text-align:center;margin-bottom:24px;">Please try again with a different payment method. Your booking will remain open for 7 days. Contact our team if you need help.</p>
+      <div style="text-align:center;">
+        <a href="${BASE_URL}/bookings/${data.bookingId}" style="display:inline-block;background:#2D6A4F;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;margin-right:12px;">Retry Payment</a>
+        <a href="${BASE_URL}/contact" style="display:inline-block;background:#fff;color:#2D6A4F;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;border:1px solid #2D6A4F;">Contact Support</a>
+      </div>`);
+  },
 };

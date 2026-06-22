@@ -6,6 +6,7 @@ import {
   bookingsTable, bookingHistoryTable, usersTable,
 } from "@workspace/db";
 import { createNotification, notifyAdmins } from "../lib/notificationHelper";
+import { requireAuth } from "../middlewares/auth";
 
 const ExperiencePackageInputSchema = z.object({
   title: z.string(),
@@ -125,7 +126,7 @@ router.patch("/packages/:id", async (req, res): Promise<void> => {
 // POST /packages/:id/book — books every experience in the package for the same date, sharing one
 // packageBookingRef. Reuses the exact capacity-check logic from routes/bookings.ts so a package
 // can never overbook an experience that's also bookable individually.
-router.post("/packages/:id/book", async (req, res): Promise<void> => {
+router.post("/packages/:id/book", requireAuth, async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const parsed = PackageBookingInputSchema.safeParse(req.body);
@@ -133,6 +134,7 @@ router.post("/packages/:id/book", async (req, res): Promise<void> => {
 
   const [pkg] = await db.select().from(experiencePackagesTable).where(eq(experiencePackagesTable.id, id));
   if (!pkg) { res.status(404).json({ error: "Package not found" }); return; }
+  if (!pkg.active) { res.status(400).json({ error: "This package is currently unavailable for booking" }); return; }
 
   const items = await db.select().from(experiencePackageItemsTable)
     .where(eq(experiencePackageItemsTable.packageId, id))
@@ -140,6 +142,13 @@ router.post("/packages/:id/book", async (req, res): Promise<void> => {
   if (items.length === 0) { res.status(400).json({ error: "Package has no experiences configured" }); return; }
 
   const experiences = await db.select().from(experiencesTable).where(inArray(experiencesTable.id, items.map(i => i.experienceId)));
+
+  // E5: Reject if any included experience is inactive.
+  const inactive = experiences.filter(e => !e.active);
+  if (inactive.length > 0) {
+    res.status(400).json({ error: `Some experiences in this package are currently unavailable: ${inactive.map(e => e.title).join(", ")}` });
+    return;
+  }
 
   // Validate capacity for every included experience before creating any booking, so a partial
   // failure can't leave the package half-booked.
@@ -164,27 +173,31 @@ router.post("/packages/:id/book", async (req, res): Promise<void> => {
     }
   }
 
-  const userId = (req.session as any).userId ?? 1;
+  const userId = (req.session as any).userId as number;
   const packageBookingRef = generatePackageBookingReference();
   const perExperienceAmount = (pkg.price * (1 - Number(pkg.discountPercent) / 100)) / experiences.length;
 
-  const createdBookings = [];
-  for (const exp of experiences) {
-    const [booking] = await db.insert(bookingsTable).values({
-      bookingReference: "GG-" + randomBytes(4).toString("hex").toUpperCase(),
-      userId,
-      experienceId: exp.id,
-      date: parsed.data.date,
-      participants: parsed.data.participants,
-      totalAmount: perExperienceAmount,
-      status: "pending",
-      paymentStatus: "pending",
-      specialRequests: parsed.data.specialRequests ?? null,
-      packageBookingRef,
-    }).returning();
-    await db.insert(bookingHistoryTable).values({ bookingId: booking.id, status: "pending", note: `Booked as part of package "${pkg.title}"`, changedBy: userId });
-    createdBookings.push(booking);
-  }
+  // E6: Wrap all inserts in a single transaction — if any insert fails, none are committed.
+  const createdBookings = await db.transaction(async (tx) => {
+    const bookings: (typeof bookingsTable.$inferSelect)[] = [];
+    for (const exp of experiences) {
+      const [booking] = await tx.insert(bookingsTable).values({
+        bookingReference: "GG-" + randomBytes(4).toString("hex").toUpperCase(),
+        userId,
+        experienceId: exp.id,
+        date: parsed.data.date,
+        participants: parsed.data.participants,
+        totalAmount: perExperienceAmount,
+        status: "pending",
+        paymentStatus: "pending",
+        specialRequests: parsed.data.specialRequests ?? null,
+        packageBookingRef,
+      }).returning();
+      await tx.insert(bookingHistoryTable).values({ bookingId: booking.id, status: "pending", note: `Booked as part of package "${pkg.title}"`, changedBy: userId });
+      bookings.push(booking);
+    }
+    return bookings;
+  });
 
   await createNotification({
     userId,

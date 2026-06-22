@@ -18,6 +18,9 @@ const APP_URL = process.env.APP_URL ?? "https://gorillaguardians.rw";
 
 const router: IRouter = Router();
 
+// B6: Simple per-IP rate limiter for the public ref-lookup endpoint.
+const refRateLimits = new Map<string, { count: number; resetAt: number }>();
+
 function generateBookingReference(): string {
   return "GG-" + randomBytes(4).toString("hex").toUpperCase();
 }
@@ -111,6 +114,7 @@ router.post("/bookings", requireAuth, async (req, res): Promise<void> => {
   const userId = (req.session as any).userId as number;
   const [exp] = await db.select().from(experiencesTable).where(eq(experiencesTable.id, parsed.data.experienceId));
   if (!exp) { res.status(404).json({ error: "Experience not found" }); return; }
+  if (!exp.active) { res.status(400).json({ error: "This experience is currently unavailable for booking" }); return; }
 
   // z.coerce.date() produces a Date object; Drizzle's PgDateString column expects YYYY-MM-DD string.
   const dateStr = parsed.data.date.toISOString().split("T")[0];
@@ -220,6 +224,16 @@ router.get("/bookings/capacity", async (req, res): Promise<void> => {
 
 // GET /bookings/ref/:ref — MUST be before /:id
 router.get("/bookings/ref/:ref", async (req, res): Promise<void> => {
+  const ip = req.ip ?? "unknown";
+  const now = Date.now();
+  const rl = refRateLimits.get(ip);
+  if (rl && rl.resetAt > now && rl.count >= 10) {
+    res.status(429).json({ error: "Too many requests — try again in a minute" });
+    return;
+  }
+  if (!rl || rl.resetAt <= now) refRateLimits.set(ip, { count: 1, resetAt: now + 60_000 });
+  else rl.count++;
+
   const ref = req.params.ref;
   const [booking] = await db.select().from(bookingsTable).where(eq(bookingsTable.bookingReference, ref));
   if (!booking) { res.status(404).json({ error: "Booking not found" }); return; }
@@ -311,6 +325,22 @@ router.patch("/bookings/:id", requireAuth, async (req, res): Promise<void> => {
       link: `/bookings/${booking.id}`,
     });
 
+    // B3: Stripe refund when a paid booking is cancelled.
+    if (parsed.data.status === "cancelled" && prevBooking.paymentStatus === "paid") {
+      if (prevBooking.stripePaymentIntentId && isStripeConfigured()) {
+        try {
+          const refund = await getStripeClient().refunds.create({ payment_intent: prevBooking.stripePaymentIntentId });
+          await db.update(bookingsTable).set({ paymentStatus: "refunded" }).where(eq(bookingsTable.id, params.data.id));
+          await db.insert(bookingHistoryTable).values({ bookingId: booking.id, status: "cancelled", note: `Refund issued: ${refund.id}`, changedBy });
+        } catch (err) {
+          console.error("[bookings] Stripe refund error:", err);
+          await db.insert(bookingHistoryTable).values({ bookingId: booking.id, status: "cancelled", note: "Refund attempt failed — manual review required", changedBy });
+        }
+      } else {
+        console.warn("[bookings] Cancelling paid booking without paymentIntentId or Stripe not configured — manual refund needed", { bookingId: booking.id });
+      }
+    }
+
     const [customer] = await db.select().from(usersTable).where(eq(usersTable.id, booking.userId));
     const [exp] = await db.select().from(experiencesTable).where(eq(experiencesTable.id, booking.experienceId));
     if (customer?.email && exp) {
@@ -351,6 +381,22 @@ router.patch("/bookings/:id", requireAuth, async (req, res): Promise<void> => {
                 bookingId: booking.id,
               }),
           template: isRejection ? "booking_rejected" : "booking_cancelled",
+          userId: booking.userId,
+        }).catch(err => console.error("[bookings] email error:", err));
+      } else if (parsed.data.status === "completed") {
+        // B5: Notify customer that their experience is complete.
+        sendEmail({
+          to: customer.email,
+          toName: customer.name,
+          subject: `Thank You! Your ${exp.title} Experience is Complete`,
+          html: emailTemplates.bookingCompleted({
+            customerName: customer.name,
+            experienceTitle: exp.title,
+            date: booking.date,
+            bookingId: booking.id,
+            bookingReference: booking.bookingReference,
+          }),
+          template: "booking_completed",
           userId: booking.userId,
         }).catch(err => console.error("[bookings] email error:", err));
       }

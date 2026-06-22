@@ -45,6 +45,11 @@ router.post("/webhooks/stripe", async (req, res): Promise<void> => {
       } else if (kind === "booking") {
         await handleBookingPaid(session);
       }
+    } else if (event.type === "checkout.session.async_payment_failed") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      if (session.metadata?.kind === "booking") {
+        await handleBookingPaymentFailed(session);
+      }
     }
   } catch (err) {
     console.error("[webhooks/stripe] handler error:", err);
@@ -96,16 +101,18 @@ async function handleBookingPaid(session: Stripe.Checkout.Session) {
   if (!booking) return;
   if (booking.paymentStatus === "paid") return;
 
+  // B1: Auto-confirm on payment — no manual confirm step needed once paid.
   await db.update(bookingsTable).set({
     paymentStatus: "paid",
+    status: "confirmed",
     stripeSessionId: session.id,
     stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null,
   }).where(eq(bookingsTable.id, bookingId));
 
   await db.insert(bookingHistoryTable).values({
     bookingId: booking.id,
-    status: booking.status,
-    note: "Payment received via Stripe",
+    status: "confirmed",
+    note: "Payment received via Stripe — booking auto-confirmed",
     changedBy: null,
   });
 
@@ -115,7 +122,7 @@ async function handleBookingPaid(session: Stripe.Checkout.Session) {
     sendEmail({
       to: customer.email,
       toName: customer.name,
-      subject: `Payment Received: ${exp.title} — Ref ${booking.bookingReference}`,
+      subject: `Confirmed & Paid: ${exp.title} — Ref ${booking.bookingReference}`,
       html: emailTemplates.bookingPaymentConfirmed({
         customerName: customer.name,
         experienceTitle: exp.title,
@@ -126,6 +133,40 @@ async function handleBookingPaid(session: Stripe.Checkout.Session) {
       template: "booking_payment_confirmed",
       userId: booking.userId,
     }).catch(err => console.error("[webhooks/stripe] booking payment email error:", err));
+  }
+}
+
+async function handleBookingPaymentFailed(session: Stripe.Checkout.Session) {
+  const bookingId = Number(session.metadata?.bookingId);
+  if (!bookingId || Number.isNaN(bookingId)) return;
+
+  const [booking] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, bookingId));
+  if (!booking) return;
+
+  await db.insert(bookingHistoryTable).values({
+    bookingId: booking.id,
+    status: booking.status,
+    note: "Stripe async payment failed — customer notified to retry",
+    changedBy: null,
+  });
+
+  const [customer] = await db.select().from(usersTable).where(eq(usersTable.id, booking.userId));
+  const [exp] = await db.select().from(experiencesTable).where(eq(experiencesTable.id, booking.experienceId));
+  if (customer?.email && exp) {
+    sendEmail({
+      to: customer.email,
+      toName: customer.name,
+      subject: `Payment Failed: ${exp.title} — Action Required`,
+      html: emailTemplates.bookingPaymentFailed({
+        customerName: customer.name,
+        experienceTitle: exp.title,
+        date: booking.date,
+        bookingId: booking.id,
+        bookingReference: booking.bookingReference,
+      }),
+      template: "booking_payment_failed",
+      userId: booking.userId,
+    }).catch(err => console.error("[webhooks/stripe] booking payment failed email error:", err));
   }
 }
 

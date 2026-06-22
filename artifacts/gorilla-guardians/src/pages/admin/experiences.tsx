@@ -13,7 +13,15 @@ import { useToast } from "@/hooks/use-toast";
 import DashboardSidebar from "@/components/layout/DashboardSidebar";
 import { ImageUpload } from "@/components/ui/image-upload";
 
-const blank = { title: "", description: "", price: "", durationHours: "2", maxParticipants: "8", location: "Musanze, Rwanda", images: [] as string[] };
+const EXPERIENCE_TYPES = ["tour", "homestay", "workshop", "cooking", "dance"] as const;
+const DIFFICULTY_LEVELS = ["easy", "moderate", "challenging", "difficult"] as const;
+
+const blank = {
+  title: "", description: "", price: "", durationHours: "2", maxParticipants: "8",
+  images: [] as string[],
+  type: "tour", active: true,
+  meetingPoint: "", difficultyLevel: "", cancellationPolicy: "", includedItems: "",
+};
 
 export default function AdminExperiencesPage() {
   const { toast } = useToast();
@@ -35,15 +43,21 @@ export default function AdminExperiencesPage() {
     duration: item.duration ?? `${item.durationHours ?? 2} hours`,
     capacity: Number(item.maxParticipants ?? item.capacity ?? 8),
     images: item.images ?? [],
-    includedItems: item.includedItems ?? [],
+    type: item.type ?? "tour",
     active: item.active ?? true,
+    meetingPoint: item.meetingPoint || undefined,
+    difficultyLevel: item.difficultyLevel || undefined,
+    cancellationPolicy: item.cancellationPolicy || undefined,
+    includedItems: typeof item.includedItems === "string"
+      ? item.includedItems.split(",").map((s: string) => s.trim()).filter(Boolean)
+      : (item.includedItems ?? []),
   });
 
   const handleSave = () => {
     if (!editItem?.title || !editItem?.price) return;
     const payload = buildExpPayload(editItem);
     if (isNew) {
-      createExp.mutate({ data: { ...payload, type: editItem.type ?? "guided_tour" } as any }, {
+      createExp.mutate({ data: payload as any }, {
         onSuccess: () => {
           toast({ title: "Experience created" });
           setEditItem(null);
@@ -116,7 +130,7 @@ export default function AdminExperiencesPage() {
                       <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{exp.duration}</span>
                       <span className="flex items-center gap-1"><Users className="w-3 h-3" />Max {exp.capacity}</span>
                     </div>
-                    <Button size="sm" variant="outline" className="w-full gap-1.5 text-xs" onClick={() => { setEditItem({ ...exp, price: String(exp.price), durationHours: String(exp.capacity), maxParticipants: String(exp.capacity) }); setIsNew(false); }}>
+                    <Button size="sm" variant="outline" className="w-full gap-1.5 text-xs" onClick={() => { setEditItem({ ...exp, price: String(exp.price), durationHours: String(exp.capacity), maxParticipants: String(exp.capacity), includedItems: (exp.includedItems ?? []).join(", ") }); setIsNew(false); }}>
                       <Edit className="w-3 h-3" /> Edit
                     </Button>
                   </div>
@@ -141,6 +155,33 @@ export default function AdminExperiencesPage() {
                 <Label>Description</Label>
                 <Textarea value={editItem.description ?? ""} onChange={e => setEditItem((x: any) => ({ ...x, description: e.target.value }))} rows={3} />
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Type <span className="text-destructive">*</span></Label>
+                  <select
+                    value={editItem.type ?? "tour"}
+                    onChange={e => setEditItem((x: any) => ({ ...x, type: e.target.value }))}
+                    className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm"
+                  >
+                    {EXPERIENCE_TYPES.map(t => (
+                      <option key={t} value={t} className="capitalize">{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Difficulty</Label>
+                  <select
+                    value={editItem.difficultyLevel ?? ""}
+                    onChange={e => setEditItem((x: any) => ({ ...x, difficultyLevel: e.target.value }))}
+                    className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm"
+                  >
+                    <option value="">Not specified</option>
+                    {DIFFICULTY_LEVELS.map(d => (
+                      <option key={d} value={d} className="capitalize">{d.charAt(0).toUpperCase() + d.slice(1)}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <Label>Price ($) <span className="text-destructive">*</span></Label>
@@ -156,8 +197,26 @@ export default function AdminExperiencesPage() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label>Location</Label>
-                <Input value={editItem.location ?? ""} onChange={e => setEditItem((x: any) => ({ ...x, location: e.target.value }))} />
+                <Label>Meeting Point</Label>
+                <Input value={editItem.meetingPoint ?? ""} onChange={e => setEditItem((x: any) => ({ ...x, meetingPoint: e.target.value }))} placeholder="e.g. Volcanoes National Park Gate" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>What's Included <span className="text-xs text-muted-foreground">(comma-separated)</span></Label>
+                <Input value={editItem.includedItems ?? ""} onChange={e => setEditItem((x: any) => ({ ...x, includedItems: e.target.value }))} placeholder="e.g. Guide, Transport, Lunch" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Cancellation Policy</Label>
+                <Textarea value={editItem.cancellationPolicy ?? ""} onChange={e => setEditItem((x: any) => ({ ...x, cancellationPolicy: e.target.value }))} rows={2} placeholder="e.g. Full refund up to 48 hours before the experience." />
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="exp-active"
+                  checked={editItem.active ?? true}
+                  onChange={e => setEditItem((x: any) => ({ ...x, active: e.target.checked }))}
+                  className="w-4 h-4"
+                />
+                <Label htmlFor="exp-active" className="cursor-pointer font-normal">Active (visible to customers)</Label>
               </div>
             </div>
           )}

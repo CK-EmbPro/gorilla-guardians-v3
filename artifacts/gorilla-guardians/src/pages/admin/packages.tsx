@@ -164,6 +164,16 @@ export default function AdminPackagesPage() {
                   <Input type="number" min={0} max={100} value={editItem.discountPercent} onChange={e => setEditItem((x: any) => ({ ...x, discountPercent: e.target.value }))} />
                 </div>
               </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="pkg-active"
+                  checked={editItem.active ?? true}
+                  onChange={e => setEditItem((x: any) => ({ ...x, active: e.target.checked }))}
+                  className="w-4 h-4"
+                />
+                <Label htmlFor="pkg-active" className="cursor-pointer font-normal">Active (visible to customers)</Label>
+              </div>
               <div className="space-y-1.5">
                 <Label>Included Experiences <span className="text-destructive">*</span> (choose 2 or more)</Label>
                 <div className="border border-border rounded-lg max-h-48 overflow-y-auto divide-y divide-border">

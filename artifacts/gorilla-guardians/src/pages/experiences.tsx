@@ -25,11 +25,10 @@ export default function ExperiencesPage() {
 
   const { data: expData, isLoading, isError, error } = useListExperiences({
     type: type !== "all" ? type : undefined,
-    limit: 20,
+    limit: 50,
   });
   if (isError) console.error("[Experiences] API error", error);
   const experiences = expData?.experiences ?? [];
-  const filtered = type === "all" ? experiences : experiences.filter((e: any) => e.type === type);
 
   return (
     <div className="min-h-screen bg-background">
@@ -94,13 +93,13 @@ export default function ExperiencesPage() {
               </Card>
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : experiences.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-muted-foreground">No experiences found.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((exp: any, i) => (
+            {experiences.map((exp: any, i) => (
               <motion.div
                 key={exp.id}
                 initial={{ opacity: 0, y: 20 }}
