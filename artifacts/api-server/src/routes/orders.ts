@@ -11,6 +11,7 @@ import {
 import { createNotification, notifyAdmins } from "../lib/notificationHelper";
 import { sendEmail, emailTemplates } from "../lib/emailService";
 import { getStripeClient, isStripeConfigured } from "../lib/stripeService";
+import { requireAuth, STAFF_ROLES } from "../middlewares/auth";
 
 const APP_URL = process.env.APP_URL ?? "https://gorillaguardians.rw";
 
@@ -47,14 +48,24 @@ async function buildOrder(order: typeof ordersTable.$inferSelect) {
   };
 }
 
-router.get("/orders", async (req, res): Promise<void> => {
+router.get("/orders", requireAuth, async (req, res): Promise<void> => {
   const params = ListOrdersQueryParams.safeParse(req.query);
   const page = params.success && params.data.page ? Number(params.data.page) : 1;
   const limit = params.success && params.data.limit ? Number(params.data.limit) : 20;
+  const sessionUserId = (req.session as any).userId as number;
+  const sessionRole = (req.session as any).role as string;
+  const isStaff = STAFF_ROLES.includes(sessionRole as any);
   const conditions: any[] = [];
   if (params.success) {
-    if (params.data.userId) conditions.push(eq(ordersTable.userId, Number(params.data.userId)));
+    // Customers can only see their own orders; staff can filter by any userId
+    if (isStaff) {
+      if (params.data.userId) conditions.push(eq(ordersTable.userId, Number(params.data.userId)));
+    } else {
+      conditions.push(eq(ordersTable.userId, sessionUserId));
+    }
     if (params.data.status) conditions.push(eq(ordersTable.status, params.data.status));
+  } else {
+    if (!isStaff) conditions.push(eq(ordersTable.userId, sessionUserId));
   }
   const where = conditions.length > 0 ? and(...conditions) : undefined;
   const total = await db.select({ count: sql<number>`count(*)` }).from(ordersTable).where(where);
@@ -64,10 +75,10 @@ router.get("/orders", async (req, res): Promise<void> => {
   res.json({ orders: rich, total: Number(total[0]?.count ?? 0), page, totalPages: Math.ceil(Number(total[0]?.count ?? 0) / limit) });
 });
 
-router.post("/orders", async (req, res): Promise<void> => {
+router.post("/orders", requireAuth, async (req, res): Promise<void> => {
   const parsed = CreateOrderBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const userId = (req.session as any).userId ?? 1;
+  const userId = (req.session as any).userId as number;
   let subtotal = 0;
   const enrichedItems: any[] = [];
   for (const item of parsed.data.items) {

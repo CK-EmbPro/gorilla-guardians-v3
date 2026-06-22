@@ -10,7 +10,7 @@ export function useSSE(userId: number | undefined, onEvent: SSEHandler) {
   const connect = useCallback(() => {
     if (!userId) return;
 
-    const apiBase = (import.meta.env.VITE_API_URL ?? (import.meta.env.BASE_URL ?? "").replace(/\/$/, ""));
+    const apiBase = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
     const url = `${apiBase}/api/stream?userId=${userId}`;
 
     const es = new EventSource(url);

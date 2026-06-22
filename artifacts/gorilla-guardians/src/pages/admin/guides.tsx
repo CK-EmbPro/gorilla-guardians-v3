@@ -13,6 +13,10 @@ import DashboardSidebar from "@/components/layout/DashboardSidebar";
 import { ImageUpload } from "@/components/ui/image-upload";
 
 const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+const authHeaders = (extra?: Record<string, string>) => {
+  const token = localStorage.getItem("gg_auth_token");
+  return { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra };
+};
 
 const EXPERIENCE_LEVELS = ["beginner", "intermediate", "advanced", "expert"];
 
@@ -209,7 +213,7 @@ export default function AdminGuidesPage() {
   const { data: guides = [], isLoading } = useQuery<any[]>({
     queryKey: ["guides"],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/api/guides`, { credentials: "include" });
+      const res = await fetch(`${API_BASE}/api/guides`, { credentials: "include", headers: authHeaders() });
       if (!res.ok) throw new Error("Failed to load guides");
       return res.json();
     },
@@ -219,7 +223,7 @@ export default function AdminGuidesPage() {
     mutationFn: async (data: any) => {
       const res = await fetch(`${API_BASE}/api/guides`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders({ "Content-Type": "application/json" }),
         credentials: "include",
         body: JSON.stringify(data),
       });
@@ -238,7 +242,7 @@ export default function AdminGuidesPage() {
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
       const res = await fetch(`${API_BASE}/api/guides/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders({ "Content-Type": "application/json" }),
         credentials: "include",
         body: JSON.stringify(data),
       });
@@ -255,7 +259,7 @@ export default function AdminGuidesPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`${API_BASE}/api/guides/${id}`, { method: "DELETE", credentials: "include" });
+      const res = await fetch(`${API_BASE}/api/guides/${id}`, { method: "DELETE", headers: authHeaders(), credentials: "include" });
       if (!res.ok) throw new Error("Failed to delete guide");
     },
     onSuccess: () => {

@@ -21,6 +21,7 @@ const AnalyticsEventSchema = z.object({
   entityId: z.number().int(),
 });
 import { sendEmail, emailTemplates } from "../lib/emailService";
+import { requireAuth, requireRole, ADMIN_ROLES } from "../middlewares/auth";
 
 const router: IRouter = Router();
 
@@ -101,7 +102,7 @@ router.get("/events", async (req, res): Promise<void> => {
   res.json(events.map(e => ({ ...e, image: e.image ?? null, endDate: e.endDate ? e.endDate.toISOString() : null, location: e.location ?? null, startDate: e.startDate.toISOString(), createdAt: e.createdAt.toISOString() })));
 });
 
-router.post("/events", async (req, res): Promise<void> => {
+router.post("/events", requireRole(...ADMIN_ROLES), async (req, res): Promise<void> => {
   const parsed = CreateEventBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const slug = parsed.data.title.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now();
@@ -140,7 +141,7 @@ router.get("/stories", async (req, res): Promise<void> => {
   res.json(stories.map(s => ({ ...s, coverImage: s.coverImage ?? null, videoUrl: s.videoUrl ?? null, artisanId: s.artisanId ?? null, createdAt: s.createdAt.toISOString() })));
 });
 
-router.post("/stories", async (req, res): Promise<void> => {
+router.post("/stories", requireRole(...ADMIN_ROLES), async (req, res): Promise<void> => {
   const parsed = CreateStoryBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const slug = parsed.data.title.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now();
@@ -193,22 +194,22 @@ router.get("/impact", async (req, res): Promise<void> => {
 });
 
 // WISHLIST
-router.get("/wishlist", async (req, res): Promise<void> => {
-  const userId = (req.session as any).userId ?? 1;
+router.get("/wishlist", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req.session as any).userId as number;
   const items = await db.select().from(wishlistTable).where(eq(wishlistTable.userId, userId));
   res.json(items.map(i => ({ ...i, createdAt: i.createdAt.toISOString(), product: undefined })));
 });
 
-router.post("/wishlist", async (req, res): Promise<void> => {
-  const userId = (req.session as any).userId ?? 1;
+router.post("/wishlist", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req.session as any).userId as number;
   const parsed = AddToWishlistBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [item] = await db.insert(wishlistTable).values({ userId, productId: parsed.data.productId }).returning();
   res.status(201).json({ ...item, createdAt: item.createdAt.toISOString() });
 });
 
-router.delete("/wishlist/:productId", async (req, res): Promise<void> => {
-  const userId = (req.session as any).userId ?? 1;
+router.delete("/wishlist/:productId", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req.session as any).userId as number;
   const raw = Array.isArray(req.params.productId) ? req.params.productId[0] : req.params.productId;
   const productId = parseInt(raw, 10);
   if (isNaN(productId)) { res.status(400).json({ error: "Invalid productId" }); return; }
@@ -287,8 +288,8 @@ router.get("/donations", async (req, res): Promise<void> => {
   res.json(donations.map(d => ({ ...d, amount: Number(d.amount), message: d.message ?? null, paymentMethod: d.paymentMethod ?? null, createdAt: d.createdAt.toISOString(), artisan: undefined })));
 });
 
-router.post("/donations", async (req, res): Promise<void> => {
-  const userId = (req.session as any).userId ?? 1;
+router.post("/donations", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req.session as any).userId as number;
   const parsed = CreateDonationBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [donation] = await db.insert(donationsTable).values({ userId, artisanId: parsed.data.artisanId, amount: parsed.data.amount, message: parsed.data.message ?? null, paymentMethod: parsed.data.paymentMethod ?? null }).returning();

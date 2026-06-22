@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/layout/Navbar";
 import { cn } from "@/lib/utils";
 
-const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
 
 const STATUSES = ["processing", "packed", "shipped", "in_transit", "out_for_delivery", "delivered"];
 
@@ -54,7 +54,7 @@ export default function TrackPage() {
     setError(null);
     setTracking(null);
     try {
-      const res = await fetch(`${BASE}/api/delivery/track/${encodeURIComponent(num.trim())}`, { credentials: "include" });
+      const res = await fetch(`${API_BASE}/api/delivery/track/${encodeURIComponent(num.trim())}`, { credentials: "include" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setError(data.error ?? "Tracking number not found.");

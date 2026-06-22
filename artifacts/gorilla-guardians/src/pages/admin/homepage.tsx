@@ -12,17 +12,21 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import DashboardSidebar from "@/components/layout/DashboardSidebar";
 
-const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+const authHeaders = (extra?: Record<string, string>) => {
+  const token = localStorage.getItem("gg_auth_token");
+  return { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra };
+};
 
 async function fetchHomepage() {
-  const res = await fetch(`${BASE}/api/homepage`, { credentials: "include" });
+  const res = await fetch(`${API_BASE}/api/homepage`, { credentials: "include", headers: authHeaders() });
   return res.json();
 }
 
 async function saveSection(key: string, content: any) {
-  const res = await fetch(`${BASE}/api/homepage/${key}`, {
+  const res = await fetch(`${API_BASE}/api/homepage/${key}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders({ "Content-Type": "application/json" }),
     credentials: "include",
     body: JSON.stringify({ content }),
   });

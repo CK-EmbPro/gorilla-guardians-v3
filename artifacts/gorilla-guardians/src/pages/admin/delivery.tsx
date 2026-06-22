@@ -9,7 +9,11 @@ import DashboardSidebar from "@/components/layout/DashboardSidebar";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
-const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+const authHeaders = (extra?: Record<string, string>) => {
+  const token = localStorage.getItem("gg_auth_token");
+  return { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra };
+};
 
 const DELIVERY_STATUSES = [
   { value: "processing", label: "Processing" },
@@ -68,7 +72,7 @@ export default function AdminDeliveryPage() {
   async function fetchOrders() {
     setLoading(true);
     try {
-      const res = await fetch(`${BASE}/api/orders?limit=50`, { credentials: "include" });
+      const res = await fetch(`${API_BASE}/api/orders?limit=50`, { credentials: "include", headers: authHeaders() });
       if (res.ok) {
         const data = await res.json();
         setOrders(data.orders ?? []);
@@ -85,7 +89,7 @@ export default function AdminDeliveryPage() {
     setLocation("");
     setTracking(null);
     try {
-      const res = await fetch(`${BASE}/api/delivery/${order.id}`, { credentials: "include" });
+      const res = await fetch(`${API_BASE}/api/delivery/${order.id}`, { credentials: "include", headers: authHeaders() });
       if (res.ok) {
         const data = await res.json();
         setTracking(data);
@@ -101,9 +105,9 @@ export default function AdminDeliveryPage() {
     if (!selected || !newStatus) return;
     setUpdating(true);
     try {
-      const res = await fetch(`${BASE}/api/delivery/${selected.id}`, {
+      const res = await fetch(`${API_BASE}/api/delivery/${selected.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders({ "Content-Type": "application/json" }),
         credentials: "include",
         body: JSON.stringify({
           status: newStatus,

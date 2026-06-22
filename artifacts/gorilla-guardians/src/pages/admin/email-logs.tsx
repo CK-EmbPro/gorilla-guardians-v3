@@ -9,6 +9,10 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+const authHeaders = (extra?: Record<string, string>) => {
+  const token = localStorage.getItem("gg_auth_token");
+  return { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra };
+};
 
 interface EmailLog {
   id: number;
@@ -53,8 +57,8 @@ export default function AdminEmailLogs() {
     setLoading(true);
     try {
       const [logsRes, statsRes] = await Promise.all([
-        fetch(`${API_BASE}/api/emails/logs?limit=100`, { credentials: "include" }),
-        fetch(`${API_BASE}/api/emails/stats`, { credentials: "include" }),
+        fetch(`${API_BASE}/api/emails/logs?limit=100`, { credentials: "include", headers: authHeaders() }),
+        fetch(`${API_BASE}/api/emails/stats`, { credentials: "include", headers: authHeaders() }),
       ]);
       if (logsRes.ok) setLogs(await logsRes.json());
       if (statsRes.ok) setStats(await statsRes.json());
@@ -70,7 +74,7 @@ export default function AdminEmailLogs() {
   async function handleResend(id: number) {
     setResendingId(id);
     try {
-      const res = await fetch(`${API_BASE}/api/emails/resend/${id}`, { method: "POST", credentials: "include" });
+      const res = await fetch(`${API_BASE}/api/emails/resend/${id}`, { method: "POST", headers: authHeaders(), credentials: "include" });
       if (res.ok) {
         toast({ title: "Resend queued", description: "The email will be retried shortly." });
         setTimeout(fetchLogs, 2000);

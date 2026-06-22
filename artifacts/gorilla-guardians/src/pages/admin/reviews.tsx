@@ -10,7 +10,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import DashboardSidebar from "@/components/layout/DashboardSidebar";
 
-const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+const authHeaders = (extra?: Record<string, string>) => {
+  const token = localStorage.getItem("gg_auth_token");
+  return { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra };
+};
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800",
@@ -68,7 +72,7 @@ export default function AdminReviewsPage() {
     if (!confirm("Delete this review permanently?")) return;
     setDeleting(id);
     try {
-      const res = await fetch(`${BASE}/api/reviews/${id}`, { method: "DELETE", credentials: "include" });
+      const res = await fetch(`${API_BASE}/api/reviews/${id}`, { method: "DELETE", headers: authHeaders(), credentials: "include" });
       if (!res.ok) throw new Error();
       toast({ title: "Review deleted" });
       queryClient.invalidateQueries({ queryKey: getListReviewsQueryKey() });

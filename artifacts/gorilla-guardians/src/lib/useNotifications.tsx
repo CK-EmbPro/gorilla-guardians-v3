@@ -23,7 +23,11 @@ interface NotificationsContextValue {
 
 const NotificationsContext = createContext<NotificationsContextValue | null>(null);
 
-const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+const authHeaders = (extra?: Record<string, string>) => {
+  const token = localStorage.getItem("gg_auth_token");
+  return { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra };
+};
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -32,7 +36,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const fetchNotifications = useCallback(async () => {
     if (!user) { setNotifications([]); return; }
     try {
-      const res = await fetch(`${BASE}/api/notifications?userId=${user.id}`, { credentials: "include" });
+      const res = await fetch(`${API_BASE}/api/notifications?userId=${user.id}`, { credentials: "include", headers: authHeaders() });
       if (!res.ok) return;
       const data = await res.json();
       if (Array.isArray(data)) setNotifications(data);
@@ -57,8 +61,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
   const markRead = async (id: number) => {
     try {
-      await fetch(`${BASE}/api/notifications/${id}/read`, {
+      await fetch(`${API_BASE}/api/notifications/${id}/read`, {
         method: "PATCH",
+        headers: authHeaders(),
         credentials: "include",
       });
       setNotifications(prev =>
@@ -72,8 +77,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const markAllRead = async () => {
     if (!user) return;
     try {
-      await fetch(`${BASE}/api/notifications/read-all?userId=${user.id}`, {
+      await fetch(`${API_BASE}/api/notifications/read-all?userId=${user.id}`, {
         method: "PATCH",
+        headers: authHeaders(),
         credentials: "include",
       });
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));

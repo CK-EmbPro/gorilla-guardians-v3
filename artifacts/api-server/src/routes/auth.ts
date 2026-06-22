@@ -12,7 +12,7 @@ import {
   UpdateUserBody,
 } from "@workspace/api-zod";
 import { createHash, randomBytes } from "crypto";
-import { generateToken } from "../lib/authToken";
+import { generateToken, verifyToken } from "../lib/authToken";
 import { sendEmail, emailTemplates } from "../lib/emailService";
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -145,7 +145,14 @@ router.post("/auth/logout", async (req, res): Promise<void> => {
 });
 
 router.get("/auth/me", async (req, res): Promise<void> => {
-  const userId = (req.session as any).userId;
+  let userId = (req.session as any).userId as number | undefined;
+  if (!userId) {
+    const auth = req.headers.authorization;
+    if (auth?.startsWith("Bearer ")) {
+      const payload = verifyToken(auth.slice(7));
+      if (payload) userId = payload.userId;
+    }
+  }
   if (!userId) {
     res.status(401).json({ error: "Not authenticated" });
     return;

@@ -8,6 +8,7 @@ import {
 } from "@workspace/api-zod";
 import { sseManager } from "../lib/sse";
 import { createNotification } from "../lib/notificationHelper";
+import { requireAuth } from "../middlewares/auth";
 
 const router: IRouter = Router();
 
@@ -17,8 +18,8 @@ const safe = (u: typeof usersTable.$inferSelect | undefined) => u ? {
   createdAt: u.createdAt.toISOString(),
 } : null;
 
-router.get("/conversations", async (req, res): Promise<void> => {
-  const userId = Number(req.query.userId) || ((req.session as any).userId ?? 1);
+router.get("/conversations", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req.session as any).userId as number;
   const convs = await db.select().from(conversationsTable).where(
     or(eq(conversationsTable.participant1Id, userId), eq(conversationsTable.participant2Id, userId))
   ).orderBy(desc(conversationsTable.updatedAt));
@@ -41,8 +42,8 @@ router.get("/conversations", async (req, res): Promise<void> => {
   res.json(rich);
 });
 
-router.post("/conversations", async (req, res): Promise<void> => {
-  const userId = Number(req.query.userId) || ((req.session as any).userId ?? 1);
+router.post("/conversations", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req.session as any).userId as number;
   const parsed = CreateConversationBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const existing = await db.select().from(conversationsTable).where(
@@ -67,7 +68,7 @@ router.post("/conversations", async (req, res): Promise<void> => {
   res.status(201).json({ id: conv.id, participants: [safe(p2)].filter(Boolean), otherUser: safe(p2), lastMessage: null, unreadCount: 0, updatedAt: conv.updatedAt.toISOString() });
 });
 
-router.get("/messages", async (req, res): Promise<void> => {
+router.get("/messages", requireAuth, async (req, res): Promise<void> => {
   const params = ListMessagesQueryParams.safeParse(req.query);
   if (!params.success || !params.data.conversationId) { res.status(400).json({ error: "conversationId required" }); return; }
   const page = params.data.page ? Number(params.data.page) : 1;
@@ -78,8 +79,8 @@ router.get("/messages", async (req, res): Promise<void> => {
   res.json(messages.map(m => ({ ...m, fileUrl: m.fileUrl ?? null, createdAt: m.createdAt.toISOString() })));
 });
 
-router.post("/messages", async (req, res): Promise<void> => {
-  const userId = Number(req.query.userId) || ((req.session as any).userId ?? 1);
+router.post("/messages", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req.session as any).userId as number;
   const parsed = SendMessageBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
@@ -121,7 +122,7 @@ router.post("/messages", async (req, res): Promise<void> => {
   res.status(201).json(serialized);
 });
 
-router.patch("/messages/:id/read", async (req, res): Promise<void> => {
+router.patch("/messages/:id/read", requireAuth, async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [message] = await db.update(messagesTable).set({ isRead: true }).where(eq(messagesTable.id, id)).returning();

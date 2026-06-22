@@ -6,11 +6,12 @@ import {
   MarkNotificationReadParams,
 } from "@workspace/api-zod";
 import { createNotification } from "../lib/notificationHelper";
+import { requireAuth, requireRole, STAFF_ROLES } from "../middlewares/auth";
 
 const router: IRouter = Router();
 
-router.get("/notifications", async (req, res): Promise<void> => {
-  const userId = Number(req.query.userId) || ((req.session as any).userId ?? 1);
+router.get("/notifications", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req.session as any).userId as number;
   const params = ListNotificationsQueryParams.safeParse(req.query);
   const conditions: any[] = [eq(notificationsTable.userId, userId)];
   if (params.success && (params.data.unreadOnly === true || params.data.unreadOnly === "true" as any)) {
@@ -21,7 +22,7 @@ router.get("/notifications", async (req, res): Promise<void> => {
   res.json(notifications.map(n => ({ ...n, link: n.link ?? null, createdAt: n.createdAt.toISOString() })));
 });
 
-router.post("/notifications", async (req, res): Promise<void> => {
+router.post("/notifications", requireRole(...STAFF_ROLES), async (req, res): Promise<void> => {
   const { userId, type, title, message, link } = req.body;
   if (!userId || !title || !message) {
     res.status(400).json({ error: "userId, title, message required" });
@@ -31,7 +32,7 @@ router.post("/notifications", async (req, res): Promise<void> => {
   res.status(201).json(notification);
 });
 
-router.patch("/notifications/:id/read", async (req, res): Promise<void> => {
+router.patch("/notifications/:id/read", requireAuth, async (req, res): Promise<void> => {
   const params = MarkNotificationReadParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   const [notification] = await db.update(notificationsTable)
@@ -40,8 +41,8 @@ router.patch("/notifications/:id/read", async (req, res): Promise<void> => {
   res.json({ ...notification, link: notification.link ?? null, createdAt: notification.createdAt.toISOString() });
 });
 
-router.patch("/notifications/read-all", async (req, res): Promise<void> => {
-  const userId = Number(req.query.userId) || ((req.session as any).userId ?? 1);
+router.patch("/notifications/read-all", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req.session as any).userId as number;
   await db.update(notificationsTable).set({ isRead: true }).where(eq(notificationsTable.userId, userId));
   res.json({ message: "All notifications marked as read" });
 });

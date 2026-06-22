@@ -20,7 +20,11 @@ const TYPE_COLORS: Record<string, string> = {
   booking: "bg-teal-50 text-teal-700 border-teal-200",
 };
 
-const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+const authHeaders = (extra?: Record<string, string>) => {
+  const token = localStorage.getItem("gg_auth_token");
+  return { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra };
+};
 
 export default function AdminNotificationsPage() {
   const { toast } = useToast();
@@ -44,9 +48,9 @@ export default function AdminNotificationsPage() {
     }
     setSending(true);
     try {
-      const res = await fetch(`${BASE}/api/notifications`, {
+      const res = await fetch(`${API_BASE}/api/notifications`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders({ "Content-Type": "application/json" }),
         credentials: "include",
         body: JSON.stringify({
           userId: Number(sendForm.targetUserId),

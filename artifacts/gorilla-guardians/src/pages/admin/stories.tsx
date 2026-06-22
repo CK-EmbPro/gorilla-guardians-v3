@@ -16,6 +16,12 @@ import DashboardSidebar from "@/components/layout/DashboardSidebar";
 import { useAuth } from "@/lib/auth";
 import { ImageUpload } from "@/components/ui/image-upload";
 
+const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+const authHeaders = (extra?: Record<string, string>) => {
+  const token = localStorage.getItem("gg_auth_token");
+  return { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra };
+};
+
 const blank = { title: "", excerpt: "", content: "", coverImage: "", type: "artisan_spotlight", published: false };
 
 export default function AdminStoriesPage() {
@@ -63,9 +69,10 @@ export default function AdminStoriesPage() {
           published: editItem.published ?? false,
         };
         if (editItem.coverImage !== undefined) payload.coverImage = editItem.coverImage || null;
-        const res = await fetch(`/api/stories/${editItem.id}`, {
+        const res = await fetch(`${API_BASE}/api/stories/${editItem.id}`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          credentials: "include",
           body: JSON.stringify(payload),
         });
         if (!res.ok) throw new Error("Update failed");

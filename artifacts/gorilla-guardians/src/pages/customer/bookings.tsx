@@ -28,6 +28,10 @@ const PAYMENT_COLORS: Record<string, string> = {
 };
 
 const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+const authHeaders = (extra?: Record<string, string>) => {
+  const token = localStorage.getItem("gg_auth_token");
+  return { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra };
+};
 
 function RescheduleModal({ booking, onClose, onSuccess }: { booking: any; onClose: () => void; onSuccess: () => void }) {
   const [date, setDate] = useState(booking.date || "");
@@ -42,7 +46,7 @@ function RescheduleModal({ booking, onClose, onSuccess }: { booking: any; onClos
     try {
       const res = await fetch(`${API_BASE}/api/bookings/${booking.id}/reschedule`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders({ "Content-Type": "application/json" }),
         credentials: "include",
         body: JSON.stringify({ date, participants: Number(participants), reason }),
       });

@@ -7,6 +7,7 @@ import {
   UpdateReviewBody,
   UpdateReviewParams,
 } from "@workspace/api-zod";
+import { requireAuth } from "../middlewares/auth";
 
 const router: IRouter = Router();
 
@@ -54,10 +55,10 @@ router.get("/reviews", async (req, res): Promise<void> => {
   res.json(rich);
 });
 
-router.post("/reviews", async (req, res): Promise<void> => {
+router.post("/reviews", requireAuth, async (req, res): Promise<void> => {
   const parsed = CreateReviewBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const userId = (req.session as any).userId ?? 1;
+  const userId = (req.session as any).userId as number;
   const [review] = await db.insert(reviewsTable).values({
     userId,
     productId: parsed.data.productId ?? null,
@@ -90,13 +91,13 @@ router.patch("/reviews/:id", async (req, res): Promise<void> => {
   res.json(await buildReview(review));
 });
 
-router.delete("/reviews/:id", async (req, res): Promise<void> => {
+router.delete("/reviews/:id", requireAuth, async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  const sessionUserId = (req.session as any).userId;
+  const sessionUserId = (req.session as any).userId as number;
   const [existing] = await db.select().from(reviewsTable).where(eq(reviewsTable.id, id));
   if (!existing) { res.status(404).json({ error: "Review not found" }); return; }
-  if (sessionUserId && existing.userId !== sessionUserId) {
+  if (existing.userId !== sessionUserId) {
     const [u] = await db.select({ role: usersTable.role }).from(usersTable).where(eq(usersTable.id, sessionUserId));
     if (!u || !["admin", "super_admin", "staff"].includes(u.role)) {
       res.status(403).json({ error: "Not authorized" }); return;

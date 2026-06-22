@@ -10,8 +10,6 @@ import { useAuth } from "@/lib/auth";
 import { useSSE } from "@/lib/useSSE";
 import { cn } from "@/lib/utils";
 
-const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
-
 function getOtherUser(conv: any, myId?: number) {
   if (conv.otherUser) return conv.otherUser;
   const other = conv.participants?.find((p: any) => p.id !== myId);
