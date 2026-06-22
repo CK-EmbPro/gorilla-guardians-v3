@@ -16,6 +16,10 @@ import { useToast } from "@/hooks/use-toast";
 import DashboardSidebar from "@/components/layout/DashboardSidebar";
 
 const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+const authHeaders = (extra?: Record<string, string>) => {
+  const token = localStorage.getItem("gg_auth_token");
+  return { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra };
+};
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
@@ -142,7 +146,7 @@ export default function AdminBookingsPage() {
   const { data: guides = [] } = useQuery<any[]>({
     queryKey: ["guides"],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/api/guides`, { credentials: "include" });
+      const res = await fetch(`${API_BASE}/api/guides`, { credentials: "include", headers: authHeaders() });
       if (!res.ok) return [];
       return res.json();
     },
@@ -191,6 +195,7 @@ export default function AdminBookingsPage() {
     try {
       const res = await fetch(`${API_BASE}/api/bookings/${id}/checkin`, {
         method: "POST",
+        headers: authHeaders(),
         credentials: "include",
       });
       const data = await res.json();
@@ -214,7 +219,7 @@ export default function AdminBookingsPage() {
     try {
       const res = await fetch(`${API_BASE}/api/bookings/${bookingId}/guide`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders({ "Content-Type": "application/json" }),
         credentials: "include",
         body: JSON.stringify({ guideId }),
       });

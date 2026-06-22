@@ -9,6 +9,10 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 
 const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+const authHeaders = (extra?: Record<string, string>) => {
+  const token = localStorage.getItem("gg_auth_token");
+  return { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra };
+};
 
 export default function BookingSuccessPage() {
   const [, setLocation] = useLocation();
@@ -26,7 +30,7 @@ export default function BookingSuccessPage() {
   const { data: booking } = useQuery<any>({
     queryKey: ["booking-success", bookingId],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/api/bookings/${bookingId}`, { credentials: "include" });
+      const res = await fetch(`${API_BASE}/api/bookings/${bookingId}`, { credentials: "include", headers: authHeaders() });
       if (!res.ok) return null;
       return res.json();
     },

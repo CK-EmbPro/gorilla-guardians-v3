@@ -25,6 +25,10 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
 };
 
 const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+const authHeaders = (extra?: Record<string, string>) => {
+  const token = localStorage.getItem("gg_auth_token");
+  return { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra };
+};
 
 export default function BookingTicketPage() {
   const [, params] = useRoute("/booking-ticket/:id");
@@ -34,7 +38,7 @@ export default function BookingTicketPage() {
   const { data: ticket, isLoading, error } = useQuery<any>({
     queryKey: ["ticket", id],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/api/bookings/${id}/ticket`, { credentials: "include" });
+      const res = await fetch(`${API_BASE}/api/bookings/${id}/ticket`, { credentials: "include", headers: authHeaders() });
       if (!res.ok) throw new Error("Ticket not found");
       return res.json();
     },

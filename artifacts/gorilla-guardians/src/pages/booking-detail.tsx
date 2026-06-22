@@ -36,6 +36,10 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
 };
 
 const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+const authHeaders = (extra?: Record<string, string>) => {
+  const token = localStorage.getItem("gg_auth_token");
+  return { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra };
+};
 
 function RescheduleModal({ booking, onClose, onSuccess }: { booking: any; onClose: () => void; onSuccess: () => void }) {
   const [date, setDate] = useState(booking.date || "");
@@ -50,7 +54,7 @@ function RescheduleModal({ booking, onClose, onSuccess }: { booking: any; onClos
     try {
       const res = await fetch(`${API_BASE}/api/bookings/${booking.id}/reschedule`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders({ "Content-Type": "application/json" }),
         credentials: "include",
         body: JSON.stringify({ date, participants: Number(participants), reason }),
       });
@@ -110,7 +114,7 @@ export default function BookingDetailPage() {
   const { data: booking, isLoading, error } = useQuery<any>({
     queryKey: ["booking", id],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/api/bookings/${id}`, { credentials: "include" });
+      const res = await fetch(`${API_BASE}/api/bookings/${id}`, { credentials: "include", headers: authHeaders() });
       if (!res.ok) throw new Error("Booking not found");
       return res.json();
     },
@@ -121,7 +125,7 @@ export default function BookingDetailPage() {
     mutationFn: async () => {
       const res = await fetch(`${API_BASE}/api/bookings/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders({ "Content-Type": "application/json" }),
         credentials: "include",
         body: JSON.stringify({ status: "cancelled" }),
       });

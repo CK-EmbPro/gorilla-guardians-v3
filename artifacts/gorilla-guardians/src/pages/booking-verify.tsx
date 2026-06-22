@@ -21,6 +21,10 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+const authHeaders = (extra?: Record<string, string>) => {
+  const token = localStorage.getItem("gg_auth_token");
+  return { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra };
+};
 
 export default function BookingVerifyPage() {
   const { user } = useAuth();
@@ -41,7 +45,7 @@ export default function BookingVerifyPage() {
     try {
       const res = await fetch(`${API_BASE}/api/bookings/verify`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders({ "Content-Type": "application/json" }),
         credentials: "include",
         body: JSON.stringify({ ref: ref.trim().toUpperCase() }),
       });
@@ -61,6 +65,7 @@ export default function BookingVerifyPage() {
     try {
       const res = await fetch(`${API_BASE}/api/bookings/${booking.id}/checkin`, {
         method: "POST",
+        headers: authHeaders(),
         credentials: "include",
       });
       const data = await res.json();
