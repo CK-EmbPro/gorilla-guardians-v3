@@ -9,7 +9,11 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useSSE } from "@/lib/useSSE";
 
-const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+const authHeaders = () => {
+  const token = localStorage.getItem("gg_auth_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
 
 const STATUSES = ["processing", "packed", "shipped", "in_transit", "out_for_delivery", "delivered"];
 
@@ -61,8 +65,8 @@ export default function CustomerOrderDetailPage() {
     if (!orderId) return;
     try {
       const [orderRes, trackRes] = await Promise.all([
-        fetch(`${BASE}/api/orders/${orderId}`, { credentials: "include" }),
-        fetch(`${BASE}/api/delivery/${orderId}`, { credentials: "include" }),
+        fetch(`${API_BASE}/api/orders/${orderId}`, { credentials: "include", headers: authHeaders() }),
+        fetch(`${API_BASE}/api/delivery/${orderId}`, { credentials: "include", headers: authHeaders() }),
       ]);
       if (orderRes.ok) setOrder(await orderRes.json());
       if (trackRes.ok) setTracking(await trackRes.json());
