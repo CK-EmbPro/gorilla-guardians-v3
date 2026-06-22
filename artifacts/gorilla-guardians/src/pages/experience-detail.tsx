@@ -62,14 +62,12 @@ export default function ExperienceDetailPage() {
         });
         setLocation(`/booking-success?${params.toString()}`);
       },
-      onError: () => {
-        const params = new URLSearchParams({
-          experience: exp?.title ?? "Experience",
-          date,
-          participants: String(participants),
-          total: String(exp ? exp.price * participants : ""),
+      onError: (err: any) => {
+        toast({
+          title: "Booking failed",
+          description: err?.data?.error ?? err?.message ?? "Please try again.",
+          variant: "destructive",
         });
-        setLocation(`/booking-success?${params.toString()}`);
       },
     });
   };
