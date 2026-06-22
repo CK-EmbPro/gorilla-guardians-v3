@@ -46,10 +46,9 @@ app.use(
   }),
 );
 app.use(express.urlencoded({ extended: true }));
-// FRONTEND_URL being set means the frontend and backend are on different origins
-// (e.g. Netlify + Render). Cross-origin cookies require sameSite:"none" + secure:true.
-// NODE_ENV is NOT a reliable signal here — Render doesn't set it to "production" by default.
-const crossOrigin = !!process.env.FRONTEND_URL;
+// Cross-origin cookies (Netlify → Render) require sameSite:"none" + secure:true.
+// Either NODE_ENV=production OR FRONTEND_URL being set signals cross-origin mode.
+const crossOrigin = process.env.NODE_ENV === "production" || !!process.env.FRONTEND_URL;
 app.use(
   session({
     secret: process.env.SESSION_SECRET ?? "gorilla-guardians-secret",

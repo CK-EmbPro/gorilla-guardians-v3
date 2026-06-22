@@ -69,7 +69,10 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     userId: user.id,
   }).catch(err => console.error("[auth] welcome email error:", err));
 
-  res.status(201).json({ user: safeUser(user), token: `session-${user.id}` });
+  req.session.save((err) => {
+    if (err) { res.status(500).json({ error: "Session error" }); return; }
+    res.status(201).json({ user: safeUser(user), token: `session-${user.id}` });
+  });
 });
 
 router.post("/auth/login", async (req, res): Promise<void> => {
@@ -86,7 +89,10 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   }
   (req.session as any).userId = user.id;
   (req.session as any).role = user.role;
-  res.json({ user: safeUser(user), token: `session-${user.id}` });
+  req.session.save((err) => {
+    if (err) { res.status(500).json({ error: "Session error" }); return; }
+    res.json({ user: safeUser(user), token: `session-${user.id}` });
+  });
 });
 
 router.post("/auth/forgot-password", async (req, res): Promise<void> => {
