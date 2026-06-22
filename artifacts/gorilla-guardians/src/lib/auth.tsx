@@ -51,25 +51,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    if (password !== "admin123") {
-      const apiBase = import.meta.env.VITE_API_URL ?? "";
-      const res = await fetch(`${apiBase}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      });
-      if (!res.ok) return false;
-      const data = await res.json();
-      setUser(data.user);
-      return true;
-    }
-    const testUser = TEST_ACCOUNTS.find(u => u.email === email);
-    if (testUser) {
-      setUser(testUser);
-      return true;
-    }
-    return false;
+    const apiBase = import.meta.env.VITE_API_URL ?? "";
+    const res = await fetch(`${apiBase}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ email, password }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    setUser(data.user);
+    return true;
   };
 
   const register = async (name: string, email: string, password: string, role: "customer" | "artisan"): Promise<boolean> => {
