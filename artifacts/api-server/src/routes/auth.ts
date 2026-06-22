@@ -12,6 +12,7 @@ import {
   UpdateUserBody,
 } from "@workspace/api-zod";
 import { createHash, randomBytes } from "crypto";
+import { generateToken } from "../lib/authToken";
 import { sendEmail, emailTemplates } from "../lib/emailService";
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -69,10 +70,9 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     userId: user.id,
   }).catch(err => console.error("[auth] welcome email error:", err));
 
-  req.session.save((err) => {
-    if (err) { res.status(500).json({ error: "Session error" }); return; }
-    res.status(201).json({ user: safeUser(user), token: `session-${user.id}` });
-  });
+  (req.session as any).userId = user.id;
+  (req.session as any).role = user.role;
+  res.status(201).json({ user: safeUser(user), token: generateToken(user.id, user.role) });
 });
 
 router.post("/auth/login", async (req, res): Promise<void> => {
@@ -89,10 +89,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   }
   (req.session as any).userId = user.id;
   (req.session as any).role = user.role;
-  req.session.save((err) => {
-    if (err) { res.status(500).json({ error: "Session error" }); return; }
-    res.json({ user: safeUser(user), token: `session-${user.id}` });
-  });
+  res.json({ user: safeUser(user), token: generateToken(user.id, user.role) });
 });
 
 router.post("/auth/forgot-password", async (req, res): Promise<void> => {

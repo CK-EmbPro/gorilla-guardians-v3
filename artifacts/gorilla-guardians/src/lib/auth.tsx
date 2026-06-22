@@ -61,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!res.ok) return false;
     const data = await res.json();
     setUser(data.user);
+    if (data.token) localStorage.setItem("gg_auth_token", data.token);
     return true;
   };
 
@@ -75,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!res.ok) return false;
     const data = await res.json();
     setUser(data.user);
+    if (data.token) localStorage.setItem("gg_auth_token", data.token);
     return true;
   };
 
@@ -82,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null);
+    localStorage.removeItem("gg_auth_token");
     const apiBase = import.meta.env.VITE_API_URL ?? "";
     fetch(`${apiBase}/api/auth/logout`, { method: "POST", credentials: "include" }).catch(() => {});
   };
